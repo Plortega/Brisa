@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFF5F8">
+<title>Brisa</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400;1,9..144,500&family=Nunito:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app" class="app"></div>
+<nav id="nav" class="nav" aria-label="Principal" hidden>
+  <a href="#inicio" data-r="inicio"><svg viewBox="0 0 24 24"><path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1z"/></svg><span>Inicio</span></a>
+  <a href="#movimientos" data-r="movimientos"><svg viewBox="0 0 24 24"><path d="M9 7h11M9 12h11M9 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01"/></svg><span>Movimientos</span></a>
+  <a href="#presupuesto" data-r="presupuesto"><svg viewBox="0 0 24 24"><path d="M11 4a8 8 0 1 0 9 9h-9z"/><path d="M14.5 3.5a7 7 0 0 1 6 6h-6z"/></svg><span>Presupuesto</span></a>
+  <a href="#metas" data-r="metas"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.6"/></svg><span>Metas</span></a>
+</nav>
+<dialog id="sheet" class="sheet"></dialog>
+<input id="file" type="file" accept=".xlsx,.xls,.csv" hidden>
+<script src="xlsx.core.min.js"></script>
+<script src="categorizador.js"></script>
+<script src="reglas-iniciales.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
