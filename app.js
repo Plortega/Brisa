@@ -28,11 +28,17 @@
       overrides: {},
       metas: [{ id: 'colchon', nombre: 'Tu primer colchón', objetivo: 1000, ahorrado: 0 }],
       limiteRescates: 150,
+      ahorro: { base: 0, vistos: [] },
       ultimaImportacion: null
     };
   }
   let S;
   try { S = JSON.parse(localStorage.getItem(KEY)) || nuevoEstado(); } catch (e) { S = nuevoEstado(); }
+  // Migración: el ahorro pasa a calcularse solo. Lo apuntado a mano antes se toma como saldo de partida.
+  if (!S.ahorro) {
+    const manual = (S.metas || []).reduce((a, m) => a + (Number(m.ahorrado) || 0), 0);
+    S.ahorro = { base: manual, vistos: manual ? (S.movs || []).map((m) => m.id) : [] };
+  }
   function guardar() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('No he podido guardar en este móvil.'); }
   }
@@ -142,6 +148,25 @@
     Object.keys(tot).forEach((k) => (tot[k] = tot[k] / n));
     return tot;
   }
+  // Tu ahorro = saldo de partida + lo apartado (nómina, redondeos, traspasos) − lo rescatado
+  function ahorro() {
+    const vistos = new Set(S.ahorro.vistos || []);
+    const d = { nomina: 0, redondeo: 0, otros: 0, rescatado: 0 };
+    for (const m of S.movs) {
+      if (vistos.has(m.id)) continue;
+      const c = cat(m);
+      if (c.categoria === 'Ahorro') {
+        const t = B.limpiar(m.concepto + ' ' + m.tipo);
+        const v = Math.abs(m.importe);
+        if (/redondeo/.test(t)) d.redondeo += v; else if (/nomina/.test(t)) d.nomina += v; else d.otros += v;
+      } else if (c.categoria === 'Rescate del ahorro') d.rescatado += Math.abs(m.importe);
+    }
+    const saldo = Math.max(0, (Number(S.ahorro.base) || 0) + d.nomina + d.redondeo + d.otros - d.rescatado);
+    // Reparto en orden: la primera meta se llena antes de pasar a la siguiente
+    let resto = saldo;
+    const metas = S.metas.map((m) => { const a = Math.min(resto, m.objetivo); resto -= a; return { ...m, ahorrado: a }; });
+    return { ...d, saldo, metas, sobra: resto };
+  }
   const porRevisar = () => S.movs.filter((m) => cat(m).confianza < 0.7 && m.importe < 0);
 
   /* ---------- Importar el Excel ---------- */
@@ -230,9 +255,10 @@
     const auto = cs.filter(([, c]) => c.confianza >= 0.7).length;
     const rev = cs.filter(([m, c]) => c.confianza < 0.7 && m.importe < 0).length;
     const porCat = {};
-    let resc = 0;
+    let resc = 0, apart = 0;
     for (const [m, c] of cs) {
       if (c.categoria === 'Rescate del ahorro') resc += m.importe;
+      if (c.categoria === 'Ahorro') apart += Math.abs(m.importe);
       if (c.cuentaComoGasto) {
         const partes = c.reparto || [{ categoria: c.categoria, importe: m.importe }];
         for (const p of partes) porCat[p.categoria] = (porCat[p.categoria] || 0) - p.importe;
@@ -253,7 +279,10 @@
     </div>
     ${top.length ? `<div class="h2">En qué se fue</div>
     ${top.map(([k, v], i) => `<div style="margin-bottom:10px"><div class="row" style="font-size:14px;margin-bottom:5px"><span>${esc(k)}</span><span class="num">${eur(v)}</span></div><div class="bar l" style="height:6px"><i style="width:${Math.round(v / max * 100)}%;background:${BARRAS[i % BARRAS.length]}"></i></div></div>`).join('')}` : ''}
-    ${resc > 0 ? `<div class="card dash row" style="justify-content:flex-start;gap:10px;color:#4A2E3C;margin-top:14px"><span style="color:var(--berry);width:18px;height:18px;display:inline-flex">${IC.uturn}</span><span class="small">Han vuelto <b>${eur(resc)}</b> de tu ahorro en este Excel.</span></div>` : ''}
+    ${apart || resc ? `<div class="card dash" style="color:#4A2E3C;margin-top:14px;display:flex;flex-direction:column;gap:6px">
+      ${apart ? `<div class="row small"><span>Apartado a tu ahorro</span><span class="num" style="color:var(--mint-d)">+${eur(apart, true)}</span></div>` : ''}
+      ${resc ? `<div class="row small"><span>Rescatado de tu ahorro</span><span class="num" style="color:var(--berry)">−${eur(resc, true)}</span></div>` : ''}
+    </div>` : ''}
     <div class="btns">${rev ? '<a class="btn ghost" href="#movimientos">Revisar ' + rev + '</a>' : ''}<a class="btn" href="#inicio">Ir a Inicio</a></div>`;
   };
 
@@ -342,7 +371,7 @@
   };
 
   function metaEta() {
-    const m = S.metas.find((x) => x.ahorrado < x.objetivo);
+    const m = ahorro().metas.find((x) => x.ahorrado < x.objetivo);
     if (!m || !S.perfil) return '';
     const faltan = m.objetivo - m.ahorrado;
     const meses = Math.ceil(faltan / RITMOS[S.perfil.ritmo].importe);
@@ -353,11 +382,20 @@
   R.metas = () => {
     const c = ciclo();
     const aporte = RITMOS[S.perfil.ritmo].importe;
-    const activa = S.metas.find((x) => x.ahorrado < x.objetivo);
+    const A = ahorro();
+    const activa = A.metas.find((x) => x.ahorrado < x.objetivo);
     const pr = Math.min(100, Math.round(c.rescates / Math.max(1, S.limiteRescates) * 100));
+    const linea = (txt, v, signo) => v ? `<div class="row small"><span>${txt}</span><span class="num" style="color:${signo === '-' ? 'var(--berry)' : 'var(--mint-d)'}">${signo}${eur(v)}</span></div>` : '';
     return `
     <div class="top"><div><h1>Tus metas${SPARK}</h1><div class="small muted">Primero un colchón. Luego, lo que tú quieras.</div></div></div>
-    ${S.metas.map((m) => {
+    <section class="card" style="display:flex;flex-direction:column;gap:6px">
+      <div class="row"><span class="small muted">Tu ahorro</span><span class="num" style="font-size:28px">${eur(A.saldo)}</span></div>
+      ${S.ahorro.base ? `<div class="row small muted"><span>Saldo de partida</span><span class="num">${eur(S.ahorro.base)}</span></div>` : ''}
+      ${linea('Apartado de la nómina', A.nomina, '+')}${linea('Redondeos de tus compras', A.redondeo, '+')}${linea('Otros traspasos al ahorro', A.otros, '+')}${linea('Rescatado', A.rescatado, '−')}
+      <p class="xs muted" style="margin:4px 0 6px;line-height:1.45">Se calcula solo con tu Excel: suma lo que tu banco aparta y resta lo que vuelve a tu cuenta.</p>
+      <button class="btn small ghost" id="bAjustarAhorro" style="align-self:flex-start">Ajustar al saldo real</button>
+    </section>
+    ${A.metas.map((m) => {
       const pc = Math.min(100, Math.round(m.ahorrado / m.objetivo * 100));
       const dash = (pc / 100 * 276.5).toFixed(0);
       const es = m === activa;
@@ -371,7 +409,6 @@
           <span class="num" style="font-size:19px">${esc(m.nombre)}</span>
           <span class="small">${eur(m.ahorrado)} de ${eur(m.objetivo)}</span>
           <span class="xs">${pc >= 100 ? '¡Conseguida!' : es ? aporte + ' €/mes · ' + metaEta().replace(/^«.*?» /, '') : 'Empieza al terminar la anterior'}</span>
-          <button class="btn small ghost" data-aportar="${esc(m.id)}" style="align-self:flex-start;margin-top:4px">Actualizar lo ahorrado</button>
         </div>
       </section>`;
     }).join('')}
@@ -405,7 +442,7 @@
       <div class="btns" style="flex-wrap:wrap"><button class="btn ghost small" id="bExport">Descargar copia</button><button class="btn ghost small" id="bImport">Restaurar copia o reglas</button></div>
     </div>
     <button class="btn ghost" id="bBorrar" style="color:var(--berry)">Borrar todos mis datos</button>
-    <p class="xs muted" style="text-align:center;margin-top:16px">Brisa v0.1</p>`;
+    <p class="xs muted" style="text-align:center;margin-top:16px">Brisa v0.1.1</p>`;
   };
 
   /* ---------- Hoja para cambiar la categoría ---------- */
@@ -496,10 +533,12 @@
     $app.querySelectorAll('[data-mov]').forEach((b) => b.onclick = () => abrirMov(b.dataset.mov));
     if (q('#bMas')) q('#bMas').onclick = () => { verTodos += 60; render(); };
     $app.querySelectorAll('[data-ritmo2]').forEach((b) => b.onclick = () => { S.perfil.ritmo = b.dataset.ritmo2; guardar(); render(); });
-    $app.querySelectorAll('[data-aportar]').forEach((b) => b.onclick = () => {
-      const m = S.metas.find((x) => x.id === b.dataset.aportar);
-      pedirNumero('¿Cuánto llevas ahorrado para «' + m.nombre + '»?', m.ahorrado, (v) => { m.ahorrado = v; guardar(); });
-    });
+    if (q('#bAjustarAhorro')) q('#bAjustarAhorro').onclick = () => {
+      pedirNumero('¿Cuánto tienes hoy en tu cuenta de ahorro?', Math.round(ahorro().saldo), (v) => {
+        // Ese saldo ya incluye todo lo subido hasta hoy; a partir de aquí suma y resta lo nuevo
+        S.ahorro = { base: v, vistos: S.movs.map((m) => m.id) }; guardar(); toast('Ahorro ajustado');
+      });
+    };
     if (q('#bNuevaMeta')) q('#bNuevaMeta').onclick = nuevaMeta;
     if (r === 'ajustes') {
       q('#fAjustes').onsubmit = (e) => {
