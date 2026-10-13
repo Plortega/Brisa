@@ -1,4 +1,4 @@
-# Brisa v0.1
+# Brisa v0.2.3
 
 App web instalable para gestionar tus finanzas. Tus movimientos y tus reglas se guardan **solo en tu móvil**: el código que subes a GitHub no contiene ningún dato tuyo.
 
@@ -16,7 +16,7 @@ App web instalable para gestionar tus finanzas. Tus movimientos y tus reglas se 
 1. Abre esa dirección en **Chrome**.
 2. Pulsa el menú ⋮ y después **Instalar app** o **Añadir a pantalla de inicio**.
 3. Abre Brisa desde el icono y rellena los primeros datos.
-4. Ve a **Ajustes → Restaurar copia o reglas** y elige `reglas-patri.json` para cargar tus reglas (psicóloga, pole, coche).
+4. Ve a **Ajustes → Restaurar copia o reglas** y elige tu archivo personal de reglas y pagos fijos (por ejemplo `brisa-patri.json`). Ese archivo no se sube nunca a este repositorio.
 5. Sube tu Excel de BBVA.
 
 ## Actualizarla
