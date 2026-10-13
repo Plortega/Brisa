@@ -1,9 +1,9 @@
-/* Brisa · v0.2.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.2.4 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.2.3';
+  const VERSION_APP = '0.2.4';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -1117,6 +1117,34 @@
     $sheet.showModal();
   }
 
+  /* ---------- Reglas y fijos personales (archivo o enlace) ---------- */
+  const esReglas = (d) => !!(d && (d.reglasUsuario || d.palabras || d.importes || d.fijos));
+  function cargarReglas(d) {
+    const sinRepetir = (xs) => { const v = new Set(); return xs.filter((x) => { const k = JSON.stringify(x); if (v.has(k)) return false; v.add(k); return true; }); };
+    Object.assign(S.reglas.reglasUsuario, d.reglasUsuario || {});
+    S.reglas.palabras = sinRepetir(S.reglas.palabras.concat(d.palabras || []));
+    S.reglas.importes = sinRepetir(S.reglas.importes.concat(d.importes || []));
+    if (d.quitar) S.fijos = S.fijos.filter((f) => !d.quitar.includes(f.id));
+    if (d.fijos) { const ids = new Set(d.fijos.map((f) => f.id)); S.fijos = S.fijos.filter((f) => !ids.has(f.id)).concat(d.fijos); }
+  }
+  // Enlace mágico: …/#cargar=<json en base64url>. Lo que va tras # nunca sale del móvil.
+  function cargarDesdeEnlace() {
+    const h = location.hash;
+    if (!h.startsWith('#cargar=')) return false;
+    history.replaceState(null, '', location.pathname + location.search + '#inicio');
+    try {
+      const b64 = h.slice(8).replace(/-/g, '+').replace(/_/g, '/');
+      const bin = atob(b64 + '==='.slice((b64.length + 3) % 4));
+      const d = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (ch) => ch.charCodeAt(0))));
+      if (!esReglas(d)) throw 0;
+      const n = (d.fijos || []).length;
+      const r = Object.keys(d.reglasUsuario || {}).length + (d.palabras || []).length + (d.importes || []).length;
+      if (!confirm(`¿Cargar en Brisa ${n} pagos fijos y ${r} reglas?`)) return false;
+      cargarReglas(d); guardar(); setTimeout(() => toast('Reglas y fijos cargados'), 300);
+    } catch (e) { setTimeout(() => toast('Ese enlace no es válido.'), 300); }
+    return true;
+  }
+
   /* ---------- Router ---------- */
   function ruta() {
     let r = location.hash.slice(1) || 'inicio';
@@ -1189,15 +1217,8 @@
           try {
             const d = JSON.parse(await inp.files[0].text());
             if (d.movs && d.reglas) { S = d; migrar(); guardar(); toast('Copia restaurada'); }
-            else if (d.reglasUsuario || d.palabras || d.importes || d.fijos) {
-              const sinRepetir = (xs) => { const v = new Set(); return xs.filter((x) => { const k = JSON.stringify(x); if (v.has(k)) return false; v.add(k); return true; }); };
-              Object.assign(S.reglas.reglasUsuario, d.reglasUsuario || {});
-              S.reglas.palabras = sinRepetir(S.reglas.palabras.concat(d.palabras || []));
-              S.reglas.importes = sinRepetir(S.reglas.importes.concat(d.importes || []));
-              if (d.quitar) S.fijos = S.fijos.filter((f) => !d.quitar.includes(f.id));
-              if (d.fijos) { const ids = new Set(d.fijos.map((f) => f.id)); S.fijos = S.fijos.filter((f) => !ids.has(f.id)).concat(d.fijos); }
-              guardar(); toast('Reglas y fijos cargados');
-            } else throw 0;
+            else if (esReglas(d)) { cargarReglas(d); guardar(); toast('Reglas y fijos cargados'); }
+            else throw 0;
             render();
           }
           catch (e) { toast('Ese archivo no es una copia de Brisa.'); }
@@ -1209,7 +1230,8 @@
       };
     }
   }
-  window.addEventListener('hashchange', () => { window.scrollTo(0, 0); render(); });
+  cargarDesdeEnlace();
+  window.addEventListener('hashchange', () => { if (cargarDesdeEnlace()) render(); window.scrollTo(0, 0); render(); });
   render();
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
