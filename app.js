@@ -1,9 +1,9 @@
-/* Brisa · v0.2.4 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.3.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.2.4';
+  const VERSION_APP = '0.3.0';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -88,7 +88,53 @@
   migrar();
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
   function guardar() {
+    S.actualizado = Date.now();
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('No he podido guardar en este móvil.'); }
+    subirPronto();
+  }
+
+  /* ---------- Nube (Supabase): una fila por persona con todo su estado ---------- */
+  const CFG = window.BRISA_NUBE || {};
+  let NUBE = null;
+  try { if (CFG.url && CFG.clave && window.supabase) NUBE = window.supabase.createClient(CFG.url, CFG.clave, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce', storageKey: 'brisa:nube' } }); } catch (e) { NUBE = null; }
+  const nube = { email: null, ultima: null, error: null, ocupada: false };
+  let tSubir = null;
+  function subirPronto() { if (!NUBE || !nube.email) return; clearTimeout(tSubir); tSubir = setTimeout(subir, 1500); }
+  async function subir() {
+    if (!NUBE || !nube.email) return;
+    try {
+      const { error } = await NUBE.from('estados').upsert({ datos: S, actualizado: new Date(S.actualizado || Date.now()).toISOString() });
+      if (error) throw error;
+      nube.ultima = Date.now(); nube.error = null;
+    } catch (e) { nube.error = 'No he podido guardar en la nube'; console.error(e); }
+  }
+  // Trae la copia de la nube si es más nueva que la del móvil; si no, sube la del móvil
+  async function bajar() {
+    if (!NUBE || !nube.email || nube.ocupada) return;
+    nube.ocupada = true;
+    try {
+      const { data, error } = await NUBE.from('estados').select('datos, actualizado').maybeSingle();
+      if (error) throw error;
+      const remota = data ? Date.parse(data.actualizado) : 0;
+      if (data && remota > (S.actualizado || 0) + 1000) {
+        S = data.datos; migrar(); S.actualizado = remota;
+        try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+        nube.ultima = Date.now(); render(); toast('Datos al día desde la nube');
+      } else if (S.perfil && (!data || (S.actualizado || 0) > remota + 1000)) await subir();
+      else nube.ultima = Date.now();
+      nube.error = null;
+    } catch (e) { nube.error = 'Sin conexión con la nube'; console.error(e); }
+    nube.ocupada = false;
+  }
+  function iniciarNube() {
+    if (!NUBE) return;
+    NUBE.auth.onAuthStateChange((ev, ses) => {
+      const antes = nube.email;
+      nube.email = ses && ses.user ? ses.user.email : null;
+      if (nube.email && !antes) { bajar().then(() => { if (ruta() === 'cuenta') location.hash = S.perfil ? '#ajustes' : '#bienvenida'; render(); }); }
+      else if (!nube.email && antes) render();
+    });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') bajar(); });
   }
 
   /* ---------- Utilidades ---------- */
@@ -548,6 +594,27 @@
   const R = {};
   const ritmoBotones = (actual, attr) => Object.entries(RITMOS).map(([k, r]) => `<button type="button" ${attr}="${k}" aria-pressed="${actual === k}">${r.label}<br><span class="xs">−${Math.round(r.r * 100)} %</span></button>`).join('');
 
+  R.cuenta = () => {
+    const volver = S.perfil ? '#ajustes' : '#bienvenida';
+    if (!NUBE) return `<div class="top"><a class="icon-btn" href="${volver}" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Tu cuenta${SPARK}</h1></div><div class="empty">La nube aún no está configurada.</div>`;
+    if (nube.email) return `<div class="top"><a class="icon-btn" href="${volver}" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Tu cuenta${SPARK}</h1></div>
+      <section class="hero"><b>Has entrado como ${esc(nube.email)}</b><p class="small" style="color:#4A2E3C;line-height:1.5;margin:6px 0 0">Tus datos se guardan solos en la nube cada vez que cambian.</p></section>
+      <a class="btn" href="${volver}">Seguir</a>`;
+    return `
+    <div class="top"><a class="icon-btn" href="${volver}" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Tu cuenta${SPARK}</h1></div>
+    <section class="hero" style="margin-bottom:18px">
+      ${orn(22, '#fff', 'top:18px;right:22px', 'tw')}${heart(12, '#E27FA8', 'top:58px;right:24px')}
+      <div class="h1" style="font-size:24px;padding-right:40px">Guarda Brisa en la nube</div>
+      <p style="margin:8px 0 0;font-size:14px;line-height:1.5;color:#4A2E3C">Así no pierdes nada si cambias de móvil o borras Chrome. Sin contraseñas: te mando un enlace a tu correo.</p>
+    </section>
+    <form id="fCuenta">
+      <label class="field">Tu correo<input name="email" type="email" autocomplete="email" inputmode="email" required placeholder="tu@correo.com"></label>
+      <button class="btn" type="submit">Enviarme el enlace</button>
+    </form>
+    <div id="cuentaOk" class="card" style="background:var(--mint);border:0;margin-top:14px" hidden><b>¡Mira tu correo!</b><p class="small" style="margin:4px 0 0;line-height:1.5">Toca el enlace desde este móvil y ábrelo en Chrome. Volverás a Brisa con tu cuenta lista.</p></div>
+    <p class="xs muted" style="line-height:1.5;margin-top:14px">Tus datos se guardan en Europa y solo tú puedes verlos.</p>`;
+  };
+
   R.bienvenida = () => {
     const p = S.perfil || { nombre: '', ingresos: 1980, diaCobro: 30, fijos: 415, ritmo: 'equilibrado' };
     return `
@@ -567,7 +634,8 @@
       <div class="seg" role="group" aria-label="Ritmo de ahorro">${ritmoBotones(p.ritmo, 'data-ritmo')}</div>
       <input type="hidden" name="ritmo" value="${esc(p.ritmo)}">
       <button class="btn" type="submit">${S.perfil ? 'Guardar' : 'Empezar'}</button>
-    </form>`;
+    </form>
+    ${NUBE && !S.perfil ? `<p class="small" style="text-align:center;margin-top:16px">¿Ya usabas Brisa en otro móvil? <a href="#cuenta">Entra y recupera tus datos</a></p>` : ''}`;
   };
 
   R.subir = () => `
@@ -971,6 +1039,12 @@
       ${filaAj({ href: '#fijos', t: 'Pagos fijos', s: 'Lo que Brisa reserva cada mes', v: c ? eur(c.P.fijos) : (S.fijos.length + '') })}
       ${filaAj({ t: 'Límite de rescates', s: 'Lo que te permites sacar del ahorro al mes', input: `<input class="aj-in" data-campo="limite" inputmode="decimal" value="${esc(S.limiteRescates)}" aria-label="Límite de rescates" style="width:76px"><span class="small muted">€</span>` })}
     </div>
+    ${NUBE ? `<div class="aj-lbl">Tu cuenta</div>
+    <div class="aj-grp">
+      ${nube.email ? filaAj({ t: 'Guardado en la nube', s: esc(nube.email) + ' · ' + (nube.error ? nube.error : nube.ultima ? 'al día' : 'conectando…') })
+        + filaAj({ btn: 'bSalir', t: 'Cerrar sesión', s: 'Tus datos se quedan en este móvil y en la nube' })
+        : filaAj({ href: '#cuenta', t: 'Guardar en la nube', s: 'Para no perder nada si cambias de móvil' })}
+    </div>` : ''}
     <div class="aj-lbl">Tus datos</div>
     <div class="aj-grp">
       ${filaAj({ t: 'Tu nombre', input: `<input class="aj-in" data-campo="nombre" value="${esc(p.nombre)}" aria-label="Tu nombre" style="width:120px;text-align:left">` })}
@@ -1148,7 +1222,7 @@
   /* ---------- Router ---------- */
   function ruta() {
     let r = location.hash.slice(1) || 'inicio';
-    if (!S.perfil && r !== 'bienvenida') r = 'bienvenida';
+    if (!S.perfil && r !== 'bienvenida' && r !== 'cuenta') r = 'bienvenida';
     if (!R[r]) r = 'inicio';
     return r;
   }
@@ -1197,6 +1271,14 @@
     $app.querySelectorAll('[data-cal]').forEach((b) => b.onclick = () => { calMes = sumarMes(calMes || hoyIso().slice(0, 7), Number(b.dataset.cal)); calDia = null; render(); });
     $app.querySelectorAll('[data-dia]').forEach((b) => b.onclick = () => { calDia = calDia === b.dataset.dia ? null : b.dataset.dia; const y = window.scrollY; render(); window.scrollTo(0, y); });
     if (q('#bNuevoFijo')) q('#bNuevoFijo').onclick = nuevoFijo;
+    if (q('#fCuenta')) q('#fCuenta').onsubmit = async (e) => {
+      e.preventDefault(); const b = e.target.querySelector('button'); b.disabled = true; b.textContent = 'Enviando…';
+      const { error } = await NUBE.auth.signInWithOtp({ email: e.target.email.value.trim(), options: { emailRedirectTo: location.origin + location.pathname } });
+      b.disabled = false; b.textContent = 'Enviarme el enlace';
+      if (error) toast(/rate|seconds/i.test(error.message) ? 'Espera un minuto y vuelve a probar' : 'No he podido enviarlo. ¿Está bien el correo?');
+      else q('#cuentaOk').hidden = false;
+    };
+    if (q('#bSalir')) q('#bSalir').onclick = async () => { await subir(); await NUBE.auth.signOut(); toast('Sesión cerrada'); render(); };
     if (r === 'ajustes') {
       $app.querySelectorAll('[data-campo]').forEach((inp) => inp.onchange = () => {
         const k = inp.dataset.campo; const v = inp.value;
@@ -1226,11 +1308,14 @@
         inp.click();
       };
       q('#bBorrar').onclick = () => {
-        if (confirm('¿Seguro? Se borran tus movimientos, reglas y metas de este móvil.')) { S = nuevoEstado(); guardar(); location.hash = '#bienvenida'; render(); }
+        if (!confirm('¿Seguro? Se borran tus movimientos, reglas y metas de este móvil.' + (nube.email ? ' Tu copia en la nube no se toca y se cierra la sesión.' : ''))) return;
+        const fin = () => { S = nuevoEstado(); guardar(); location.hash = '#bienvenida'; render(); };
+        if (NUBE && nube.email) { clearTimeout(tSubir); nube.email = null; NUBE.auth.signOut().finally(fin); } else fin();
       };
     }
   }
   cargarDesdeEnlace();
+  iniciarNube();
   window.addEventListener('hashchange', () => { if (cargarDesdeEnlace()) render(); window.scrollTo(0, 0); render(); });
   render();
 
