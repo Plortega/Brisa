@@ -1,9 +1,9 @@
-/* Brisa · v0.3.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.3.3';
+  const VERSION_APP = '0.4.0';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -128,15 +128,115 @@
     } catch (e) { nube.error = 'Sin conexión con la nube'; console.error(e); }
     nube.ocupada = false;
   }
+  /* ---------- Conexión directa con BBVA (función «banco» en Supabase + Enable Banking) ---------- */
+  const banco = { ocupado: false };
+  async function llamarBanco(accion, extra) {
+    const { data, error } = await NUBE.functions.invoke('banco', { body: { accion, ...(extra || {}) } });
+    if (error) {
+      let msg = error.message;
+      try { const d = await error.context.json(); msg = d.error || msg; } catch (e) {}
+      throw new Error(msg);
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  }
+  async function conectarBanco() {
+    if (!NUBE || !nube.email) { location.hash = '#cuenta'; return; }
+    try {
+      toast('Abriendo BBVA…');
+      const r = await llamarBanco('empezar', { redirect: location.origin + location.pathname });
+      location.href = r.url;
+    } catch (e) { console.error(e); toast('No he podido abrir BBVA: ' + e.message); }
+  }
+  // Movimientos del banco → Brisa, sin repetir los que ya llegaron por Excel
+  function incorporarBanco(r) {
+    const leidos = (r.movimientos || []).map(taparMov);
+    const refs = new Set(S.movs.map((m) => m.ref).filter(Boolean));
+    const cuenta = {};
+    for (const m of S.movs) { if (m.ref) continue; const k = m.fecha + '|' + Number(m.importe).toFixed(2); cuenta[k] = (cuenta[k] || 0) + 1; }
+    const ids = new Set(S.movs.map((m) => m.id));
+    const nuevos = []; const ahora = Date.now();
+    leidos.forEach((m, i) => {
+      if (refs.has(m.ref)) return;
+      const k = m.fecha + '|' + Number(m.importe).toFixed(2);
+      if (cuenta[k] > 0) { cuenta[k]--; return; } // ya estaba (del Excel)
+      m.id = idMov(m); m.imp = ahora; m.ord = i;
+      if (ids.has(m.id)) m.id += '|' + m.ref;
+      ids.add(m.id); refs.add(m.ref); nuevos.push(m);
+    });
+    if (nuevos.length) {
+      S.movs = S.movs.concat(nuevos).sort((a, b) => b.fecha.localeCompare(a.fecha));
+      const f = nuevos.map((m) => m.fecha).sort();
+      S.ultimaImportacion = { cuando: hoyIso(), ids: nuevos.map((m) => m.id), duplicados: 0, desde: f[0], hasta: f[f.length - 1], banco: true };
+    }
+    // Lo retenido con tarjeta ya lo da el banco: no hace falta apuntarlo a mano
+    if (typeof r.retenido === 'number') S.retenido = { importe: r.retenido, fecha: hoyIso(), auto: true };
+    S.reservas = reservasActivas();
+    return nuevos.length;
+  }
+  async function sincronizarBanco(aviso) {
+    if (!NUBE || !nube.email || !S.banco || !S.banco.conectado || banco.ocupado) return;
+    banco.ocupado = true; if (aviso) toast('Mirando BBVA…');
+    try {
+      const r = await llamarBanco('sincronizar');
+      if (r.caducada) { S.banco.caducada = true; guardar(); render(); return; }
+      const n = incorporarBanco(r);
+      S.banco.ultima = Date.now(); S.banco.caducada = false; S.banco.error = null;
+      guardar(); render();
+      if (n || aviso) toast(n ? `${n} ${n === 1 ? 'movimiento nuevo' : 'movimientos nuevos'} de BBVA` : 'BBVA al día');
+    } catch (e) { console.error(e); S.banco.error = e.message; guardar(); if (aviso) toast('No he podido hablar con BBVA'); render(); }
+    banco.ocupado = false;
+  }
+  // Vuelta desde BBVA: ?code=…&state=… en la dirección
+  const vuelta = (() => {
+    const q = new URLSearchParams(location.search);
+    if (!q.get('code') && !q.get('error')) return null;
+    const v = { code: q.get('code'), state: q.get('state'), error: q.get('error'), desc: q.get('error_description') };
+    history.replaceState(null, '', location.pathname + '#ajustes');
+    return v;
+  })();
+  async function terminarConexion() {
+    if (!vuelta) return;
+    const v = vuelta; vuelta.hecho = true;
+    if (v.error || !v.code) { toast('BBVA no ha dado permiso' + (v.desc ? ': ' + v.desc : '')); return; }
+    try {
+      toast('Conectando con BBVA…');
+      const r = await llamarBanco('codigo', { code: v.code, state: v.state });
+      const est = await llamarBanco('estado');
+      S.banco = { conectado: true, hasta: est.valid_until, ultima: Date.now(), cuentas: est.cuentas };
+      const n = incorporarBanco(r);
+      guardar(); location.hash = '#inicio'; render();
+      toast(`¡BBVA conectado! ${n} ${n === 1 ? 'movimiento nuevo' : 'movimientos nuevos'}`);
+    } catch (e) { console.error(e); toast('No he podido terminar la conexión: ' + e.message); }
+  }
+  async function desconectarBanco() {
+    if (!confirm('¿Desconectar BBVA? Brisa dejará de traer tus movimientos y volverás a subir el Excel.')) return;
+    try { await llamarBanco('desconectar'); } catch (e) { console.error(e); }
+    S.banco = null; guardar(); render(); toast('BBVA desconectado');
+  }
+  const bancoActivo = () => !!(S.banco && S.banco.conectado && !S.banco.caducada);
+  function diasPermiso() { return S.banco && S.banco.hasta ? Math.ceil((Date.parse(S.banco.hasta) - Date.now()) / 86400000) : null; }
+
   function iniciarNube() {
     if (!NUBE) return;
     NUBE.auth.onAuthStateChange((ev, ses) => {
       const antes = nube.email;
       nube.email = ses && ses.user ? ses.user.email : null;
-      if (nube.email && !antes) { bajar().then(() => { if (ruta() === 'cuenta') location.hash = S.perfil ? '#ajustes' : '#bienvenida'; render(); }); }
+      if (nube.email && !antes) {
+        bajar().then(() => {
+          if (ruta() === 'cuenta') location.hash = S.perfil ? '#ajustes' : '#bienvenida';
+          render();
+          // Al abrir: termina la conexión con BBVA si venimos de autorizar, o trae lo nuevo cada 2 horas
+          if (vuelta && !vuelta.hecho) terminarConexion();
+          else if (bancoActivo() && (!S.banco.ultima || Date.now() - S.banco.ultima > 2 * 3600000)) sincronizarBanco(false);
+        });
+      }
       else if (!nube.email && antes) render();
     });
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') bajar(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      bajar().then(() => { if (bancoActivo() && (!S.banco.ultima || Date.now() - S.banco.ultima > 2 * 3600000)) sincronizarBanco(false); });
+    });
   }
 
   /* ---------- Utilidades ---------- */
@@ -161,6 +261,12 @@
   const dias = (a, b) => Math.round((aDate(b) - aDate(a)) / 86400000);
   const masDias = (s, n) => { const d = aDate(s); d.setDate(d.getDate() + n); return iso(d); };
   const hoyIso = () => iso(new Date());
+  function haceCuanto(ms) {
+    const min = Math.round((Date.now() - ms) / 60000);
+    if (min < 2) return 'ahora mismo'; if (min < 60) return 'hace ' + min + ' min';
+    const h = Math.round(min / 60); if (h < 24) return 'hace ' + h + (h === 1 ? ' hora' : ' horas');
+    const d = Math.round(h / 24); return 'hace ' + d + (d === 1 ? ' día' : ' días');
+  }
   const sumarMes = (ym, k) => { const [y, m] = ym.split('-').map(Number); const d = new Date(y, m - 1 + k, 1); return iso(d).slice(0, 7); };
   const mesTexto = (ym) => MESES_L[Number(ym.slice(5, 7)) - 1] + ' de ' + ym.slice(0, 4);
   // «hoy», «mañana», «el jueves 16» o «el 8 nov»
@@ -706,9 +812,14 @@
       const ids = new Set(S.movs.map((m) => m.id));
       const nuevos = []; let dup = 0;
       const ahora = Date.now();
+      // Los que ya trajo la conexión con BBVA no se repiten
+      const delBanco = {};
+      for (const m of S.movs) { if (!m.ref) continue; const k = m.fecha + '|' + Number(m.importe).toFixed(2); delBanco[k] = (delBanco[k] || 0) + 1; }
       leidos.forEach((m, i) => {
         m.id = idMov(m); m.imp = ahora; m.ord = i;
         if (ids.has(m.id)) { dup++; return; }
+        const kb = m.fecha + '|' + Number(m.importe).toFixed(2);
+        if (delBanco[kb] > 0) { delBanco[kb]--; dup++; return; }
         ids.add(m.id); nuevos.push(m);
       });
       S.movs = S.movs.concat(nuevos).sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -893,7 +1004,10 @@
     ${c.finde.length ? linkCard({ href: '#finde', style: 'background:var(--sky)', icStyle: 'color:var(--sky-d)', icon: IC.sun, titulo: `${aDate(hoy).getDay() >= 5 || aDate(hoy).getDay() === 0 ? 'Este finde te quedan' : 'Este finde puedes gastar'} ${eur(c.findeTotal)}`, sub: 'Viernes a domingo · repartido según tus hábitos', subStyle: 'color:var(--sky-d)' }) : ''}
     ${sug.length ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.repeat, titulo: sug.length === 1 ? 'Un pago se repite cada mes' : sug.length + ' pagos se repiten cada mes', sub: '¿Es un pago fijo? Un toque y lo apunto', subStyle: 'color:var(--butter-d)' }) : ''}
     ${S.retenido && S.retenido.importe > 0 && S.ultimaImportacion && S.retenido.fecha < S.ultimaImportacion.cuando ? linkCard({ href: '#fijos', style: 'background:var(--lilac)', icStyle: 'color:var(--lilac-d)', icon: IC.card, titulo: `¿Sigue retenido ${eur(S.retenido.importe)}?`, sub: 'Has subido un Excel nuevo: actualízalo para no descontarlo dos veces', subStyle: 'color:var(--lilac-d)' }) : ''}
-    ${linkCard({ attrs: 'id="bSubirHome"', style: viejo ? 'background:var(--sky)' : 'background:#fff;border:1px solid var(--line)', icStyle: (viejo ? '' : 'background:var(--sky);') + 'color:var(--sky-d)', icon: IC.file, titulo: viejo ? 'Toca subir el Excel' : 'Subir el Excel de la semana', sub: 'Datos hasta el ' + fmtF(ultimo) })}
+    ${S.banco && S.banco.caducada ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Renueva el permiso con BBVA', sub: 'Ha caducado: un minuto y vuelvo a traer tus movimientos solos', subStyle: 'color:#5A4238' })
+      : bancoActivo() ? (diasPermiso() !== null && diasPermiso() <= 7 ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.alert, titulo: `Tu permiso con BBVA caduca en ${Math.max(0, diasPermiso())} ${diasPermiso() === 1 ? 'día' : 'días'}`, sub: 'Renuévalo ahora para no volver al Excel', subStyle: 'color:var(--butter-d)' }) : '')
+        + linkCard({ attrs: 'id="bSyncBanco"', style: 'background:#fff;border:1px solid var(--line)', icStyle: 'background:var(--sky);color:var(--sky-d)', icon: IC.repeat, titulo: 'Movimientos de BBVA al día', sub: (S.banco.ultima ? 'Última vez ' + haceCuanto(S.banco.ultima) : 'Aún sin traer') + ' · toca para actualizar' + (S.banco.error ? ' · último intento con error' : '') })
+      : linkCard({ attrs: 'id="bSubirHome"', style: viejo ? 'background:var(--sky)' : 'background:#fff;border:1px solid var(--line)', icStyle: (viejo ? '' : 'background:var(--sky);') + 'color:var(--sky-d)', icon: IC.file, titulo: viejo ? 'Toca subir el Excel' : 'Subir el Excel de la semana', sub: 'Datos hasta el ' + fmtF(ultimo) })}
     ${linkCard({ href: '#metas', style: 'background:#fff;border:1.5px dashed #F0C3D5', icStyle: 'background:var(--rose);color:var(--berry)', icon: IC.uturn, titulo: `Rescates: ${eur(c.rescates - c.forzados)} de ${eur(S.limiteRescates)}`, sub: c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : 'Lo que ha vuelto de tu ahorro este mes' })}
     ${plz.length > 1 ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.card, titulo: `${plz.length} cargos de pago a plazos`, sub: [...new Set(plz.map((p) => p.prov))].join(', ') + ' · ¿cuántas cuotas quedan?', subStyle: 'color:var(--butter-d)' }) : tarjetaPlazos(plz)}
     ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:#5A4238' }) : ''}
@@ -1300,8 +1414,12 @@
     ${NUBE ? `<div class="aj-lbl">Tu cuenta</div>
     <div class="aj-grp">
       ${nube.email ? filaAj({ t: 'Guardado en la nube', s: esc(nube.email) + ' · ' + (nube.error ? nube.error : nube.ultima ? 'al día' : 'conectando…') })
+        + (S.banco && S.banco.conectado
+          ? filaAj({ btn: S.banco.caducada ? 'bBanco' : 'bSyncBanco', t: S.banco.caducada ? 'Renovar permiso con BBVA' : 'BBVA conectado', s: S.banco.caducada ? 'El permiso ha caducado' : 'Permiso hasta el ' + (S.banco.hasta ? fmtF(S.banco.hasta.slice(0, 10)) : '—') + ' · ' + (S.banco.ultima ? 'al día ' + haceCuanto(S.banco.ultima) : 'sin traer aún') })
+            + filaAj({ btn: 'bDesBanco', t: 'Desconectar BBVA', s: 'Vuelves a subir el Excel a mano' })
+          : filaAj({ btn: 'bBanco', t: 'Conectar con BBVA', s: 'Tus movimientos llegan solos: adiós al Excel' }))
         + filaAj({ btn: 'bSalir', t: 'Cerrar sesión', s: 'Tus datos se quedan en este móvil y en la nube' })
-        : filaAj({ href: '#cuenta', t: 'Guardar en la nube', s: 'Para no perder nada si cambias de móvil' })}
+        : filaAj({ href: '#cuenta', t: 'Guardar en la nube', s: 'Para no perder nada si cambias de móvil. También hace falta para conectar BBVA' })}
     </div>` : ''}
     <div class="aj-lbl">Tus datos</div>
     <div class="aj-grp">
@@ -1529,6 +1647,9 @@
     $app.querySelectorAll('[data-cal]').forEach((b) => b.onclick = () => { calMes = sumarMes(calMes || hoyIso().slice(0, 7), Number(b.dataset.cal)); calDia = null; render(); });
     $app.querySelectorAll('[data-dia]').forEach((b) => b.onclick = () => { calDia = calDia === b.dataset.dia ? null : b.dataset.dia; const y = window.scrollY; render(); window.scrollTo(0, y); });
     if (q('#bNuevoFijo')) q('#bNuevoFijo').onclick = nuevoFijo;
+    if (q('#bBanco')) q('#bBanco').onclick = conectarBanco;
+    if (q('#bSyncBanco')) q('#bSyncBanco').onclick = () => sincronizarBanco(true);
+    if (q('#bDesBanco')) q('#bDesBanco').onclick = desconectarBanco;
     // ¿Me lo compro?
     const verDeseo = (id) => { const d = S.deseos.find((x) => x.id === id); if (!d) return; Object.assign(CQ, { item: d.nombre, importe: String(d.importe).replace('.', ','), modo: 'once', hecho: null }); };
     $app.querySelectorAll('[data-deseo]').forEach((b) => b.onclick = () => { verDeseo(b.dataset.deseo); location.hash = '#comprar'; });
