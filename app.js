@@ -1,9 +1,9 @@
-/* Brisa · v0.4.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.2';
+  const VERSION_APP = '0.4.3';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -1426,6 +1426,10 @@
         + filaAj({ btn: 'bSalir', t: 'Cerrar sesión', s: 'Tus datos se quedan en este móvil y en la nube' })
         : filaAj({ href: '#cuenta', t: 'Guardar en la nube', s: 'Para no perder nada si cambias de móvil. También hace falta para conectar BBVA' })}
     </div>` : ''}
+    <div class="aj-lbl">Privacidad</div>
+    <div class="aj-grp">
+      ${filaAj({ btn: 'bCandado', t: 'Entrar con huella', s: (leerC() && leerC().on) ? (leerC().cred ? 'Huella o PIN' : 'Con PIN') + ' si llevas más de 5 min sin usarla' : 'Nadie más ve tus cuentas', v: (leerC() && leerC().on) ? 'Activado' : 'No' })}
+    </div>
     <div class="aj-lbl">Tus datos</div>
     <div class="aj-grp">
       ${filaAj({ t: 'Tu nombre', input: `<input class="aj-in" data-campo="nombre" value="${esc(p.nombre)}" aria-label="Tu nombre" style="width:120px;text-align:left">` })}
@@ -1600,6 +1604,142 @@
     return true;
   }
 
+  /* ---------- Candado: huella o PIN tras 5 minutos sin usar Brisa ----------
+     Todo vive solo en este móvil (no va a la nube): la huella la comprueba Android
+     y Brisa solo guarda el identificador de la credencial y el PIN cifrado. */
+  const CANDADO_KEY = 'brisa:candado', USO_KEY = 'brisa:uso', ESPERA = 5 * 60000;
+  const leerC = () => { try { return JSON.parse(localStorage.getItem(CANDADO_KEY)) || null; } catch (e) { return null; } };
+  const guardarC = (c) => { try { c ? localStorage.setItem(CANDADO_KEY, JSON.stringify(c)) : localStorage.removeItem(CANDADO_KEY); } catch (e) {} };
+  const marcarUso = () => { try { localStorage.setItem(USO_KEY, String(Date.now())); } catch (e) {} };
+  const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const deB64 = (s) => Uint8Array.from(atob(s), (ch) => ch.charCodeAt(0));
+  async function hashPin(sal, pin) {
+    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sal + '|' + pin));
+    return b64(h);
+  }
+  const hayHuella = async () => { try { return !!(window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); } catch (e) { return false; } };
+  async function crearHuella() {
+    const nombre = (S.perfil && S.perfil.nombre) || 'Brisa';
+    const cred = await navigator.credentials.create({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)), rp: { name: 'Brisa', id: location.hostname },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: nombre, displayName: nombre },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' }, timeout: 60000 } });
+    return b64(cred.rawId);
+  }
+  async function pedirHuella(c) {
+    await navigator.credentials.get({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), rpId: location.hostname,
+      allowCredentials: [{ type: 'public-key', id: deB64(c.cred) }], userVerification: 'required', timeout: 60000 } });
+    return true;
+  }
+  const IC_HUELLA = (sz) => `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="13" rx="6.5" ry="7.5" fill="currentColor" fill-opacity=".2" stroke="none"/><path d="M8 19c1-1.7 1.6-3.8 1.6-6.4a2.4 2.4 0 0 1 4.8 0c0 1.5-.1 2.9-.4 4.2"/><path d="M12 12.6c0 3-.6 5.6-2 7.6"/><path d="M5.3 15.8c.3-1 .5-2.1.5-3.2a6.2 6.2 0 0 1 11.2-3.7"/><path d="M18 11.4c.1.4.2.8.2 1.2 0 2.6-.3 4.8-1 6.8"/><path d="M6.2 6.8A8.5 8.5 0 0 1 17.8 6"/></svg>`;
+  const IC_BORRAR = '<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 5.5h9.3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9.2a2 2 0 0 1-1.5-.7L3.5 12l4.2-5.8a2 2 0 0 1 1.5-.7z" fill="currentColor" fill-opacity=".2" stroke="none"/><path d="M9.2 5.5h9.3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9.2a2 2 0 0 1-1.5-.7L3.5 12l4.2-5.8a2 2 0 0 1 1.5-.7z"/><path d="M12.3 9.5l5 5M17.3 9.5l-5 5"/></svg>';
+  // Teclado de PIN reutilizable: llama a alListo(pin) al llegar a 4 cifras
+  function teclado(cont, titulo, alListo, conHuella) {
+    let pin = '';
+    const pintar = (msg, error) => {
+      cont.innerHTML = `<div class="lk-msg ${error ? 'lk-err' : ''}">${msg || titulo}</div>
+        <div class="lk-dots" role="img" aria-label="${pin.length} de 4 números">${[0, 1, 2, 3].map((i) => `<i class="${i < pin.length ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="lk-keys">${['1', '2', '3', '4', '5', '6', '7', '8', '9', conHuella ? 'h' : '', '0', 'del'].map((k) =>
+          k === '' ? '<span></span>' : k === 'h' ? `<button type="button" class="lk-key lk-flat" data-k="h" aria-label="Usar huella">${IC_HUELLA(28)}</button>`
+          : k === 'del' ? `<button type="button" class="lk-key lk-flat" data-k="del" aria-label="Borrar">${IC_BORRAR}</button>`
+          : `<button type="button" class="lk-key" data-k="${k}">${k}</button>`).join('')}</div>`;
+    };
+    pintar();
+    cont.onclick = async (e) => {
+      const b = e.target.closest('[data-k]'); if (!b) return;
+      const k = b.dataset.k;
+      if (k === 'h') { cont.dispatchEvent(new CustomEvent('huella')); return; }
+      if (k === 'del') pin = pin.slice(0, -1); else if (pin.length < 4) pin += k;
+      pintar();
+      if (pin.length === 4) {
+        const r = await alListo(pin);
+        if (r !== true) { pin = ''; pintar(r || 'No es ese PIN', true); cont.querySelector('.lk-dots').classList.add('shake'); }
+      }
+    };
+    return { reset: (msg, err) => { pin = ''; pintar(msg, err); } };
+  }
+  let bloqueada = false;
+  function bloquear() {
+    const c = leerC(); if (!c || !c.on || bloqueada) return;
+    bloqueada = true;
+    const capa = document.createElement('div'); capa.className = 'lk'; capa.setAttribute('role', 'dialog'); capa.setAttribute('aria-modal', 'true'); capa.setAttribute('aria-label', 'Desbloquear Brisa');
+    let fallos = 0, hasta = 0;
+    const abrir = () => { bloqueada = false; marcarUso(); capa.remove(); };
+    const vistaHuella = () => {
+      capa.innerHTML = `${orn(26, '#F5B8CF', 'top:80px;left:52px')}${orn(16, '#E27FA8', 'top:120px;right:56px')}
+        <div class="small muted" style="font-size:15px">Hola de nuevo</div><div class="h1" style="font-size:36px;letter-spacing:-.8px;margin-bottom:40px">${esc((S.perfil && S.perfil.nombre) || '')}</div>
+        <button type="button" class="lk-finger" id="lkH" aria-label="Entrar con huella"><span class="pulse"></span><span class="pulse2"></span>${IC_HUELLA(72)}</button>
+        <b style="font-size:16px;margin-bottom:6px">Toca el sensor para entrar</b><span class="small muted" style="font-size:14px">Tu número de hoy te está esperando</span>
+        <button type="button" class="lk-alt" id="lkP">Usar PIN</button>`;
+      const go = async () => { try { await pedirHuella(leerC()); abrir(); } catch (e) { /* cancelada: sigue el candado */ } };
+      capa.querySelector('#lkH').onclick = go; capa.querySelector('#lkP').onclick = vistaPin;
+      go();
+    };
+    const vistaPin = () => {
+      const cc = leerC();
+      capa.innerHTML = `<div class="small muted" style="font-size:15px">Hola de nuevo</div><div class="h1" style="font-size:36px;letter-spacing:-.8px;margin-bottom:24px">${esc((S.perfil && S.perfil.nombre) || '')}</div><div id="lkT" style="width:100%;display:flex;flex-direction:column;align-items:center"></div>`;
+      const cont = capa.querySelector('#lkT');
+      teclado(cont, 'Escribe tu PIN', async (pin) => {
+        if (Date.now() < hasta) return 'Espera unos segundos';
+        if (await hashPin(cc.sal, pin) === cc.pin) { abrir(); return true; }
+        fallos++; if (fallos >= 5) { hasta = Date.now() + 30000; fallos = 0; return 'Demasiados intentos: espera 30 s'; }
+        return 'No es ese PIN';
+      }, !!cc.cred);
+      cont.addEventListener('huella', vistaHuella);
+    };
+    document.body.appendChild(capa);
+    const c2 = leerC();
+    if (c2.cred) vistaHuella(); else vistaPin();
+  }
+  function comprobarCandado() {
+    const c = leerC(); if (!c || !c.on) return;
+    let uso = 0; try { uso = Number(localStorage.getItem(USO_KEY)) || 0; } catch (e) {}
+    if (Date.now() - uso > ESPERA) bloquear();
+  }
+  // Configurar desde Ajustes
+  function abrirCandado() {
+    const c = leerC();
+    if (c && c.on) {
+      $sheet.innerHTML = `<div class="row" style="align-items:flex-start"><div class="num" style="font-size:20px">Desbloqueo</div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
+        <p class="small muted" style="line-height:1.5;margin:8px 0 14px">Brisa te pide ${c.cred ? 'la huella (o el PIN)' : 'el PIN'} si llevas más de 5 minutos sin usarla. Solo en este móvil.</p>
+        <div class="btns" style="flex-direction:column"><button type="button" class="btn ghost" id="sCambiar">Cambiar el PIN</button>
+        ${c.cred ? '' : '<button type="button" class="btn ghost" id="sHuella">Añadir la huella</button>'}
+        <button type="button" class="btn ghost" id="sQuitar" style="color:var(--berry)">Quitar el desbloqueo</button></div>`;
+      $sheet.onclick = (e) => { if (e.target.closest('#sCerrar') || e.target === $sheet) $sheet.close(); };
+      const confirmarPin = (titulo, luego) => {
+        $sheet.innerHTML = `<div class="row" style="align-items:flex-start"><div class="num" style="font-size:20px">${titulo}</div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div><div id="sT" class="lk-in-sheet"></div>`;
+        teclado($sheet.querySelector('#sT'), 'Escribe tu PIN actual', async (pin) => { if (await hashPin(c.sal, pin) !== c.pin) return 'No es ese PIN'; luego(); return true; });
+      };
+      $sheet.querySelector('#sQuitar').onclick = () => confirmarPin('Quitar el desbloqueo', () => { guardarC(null); $sheet.close(); render(); toast('Desbloqueo quitado'); });
+      $sheet.querySelector('#sCambiar').onclick = () => confirmarPin('Cambiar el PIN', () => nuevoPin(c.cred));
+      if (q2('#sHuella')) q2('#sHuella').onclick = async () => { try { const cred = await crearHuella(); guardarC({ ...c, cred }); $sheet.close(); render(); toast('Huella añadida'); } catch (e) { toast('No he podido usar la huella en este móvil'); } };
+      $sheet.showModal(); return;
+    }
+    nuevoPin(null);
+  }
+  const q2 = (s) => $sheet.querySelector(s);
+  function nuevoPin(credPrevia) {
+    let primero = null;
+    $sheet.innerHTML = `<div class="row" style="align-items:flex-start"><div class="num" style="font-size:20px">Elige un PIN</div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
+      <p class="small muted" style="line-height:1.5;margin:8px 0 6px">4 números. Te servirá si la huella falla.</p><div id="sT" class="lk-in-sheet"></div>`;
+    $sheet.onclick = (e) => { if (e.target.closest('#sCerrar') || e.target === $sheet) $sheet.close(); };
+    const t = teclado(q2('#sT'), 'Escribe 4 números', async (pin) => {
+      if (!primero) { primero = pin; setTimeout(() => t.reset('Repítelo para confirmar'), 150); return true; }
+      if (pin !== primero) { primero = null; return 'No coinciden. Empieza otra vez'; }
+      const sal = b64(crypto.getRandomValues(new Uint8Array(16)));
+      const c = { on: true, sal, pin: await hashPin(sal, pin), cred: credPrevia || null };
+      if (!credPrevia && await hayHuella()) { try { c.cred = await crearHuella(); } catch (e) { /* sin huella: solo PIN */ } }
+      guardarC(c); marcarUso(); $sheet.close(); render();
+      toast(c.cred ? 'Listo: huella y PIN activados' : 'Listo: PIN activado');
+      return true;
+    });
+    if (!$sheet.open) $sheet.showModal();
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { if (!bloqueada) marcarUso(); } else comprobarCandado(); });
+  window.addEventListener('pagehide', () => { if (!bloqueada) marcarUso(); });
+  document.addEventListener('pointerdown', () => { if (!bloqueada) marcarUso(); }, { passive: true });
+
   /* ---------- Router ---------- */
   function ruta() {
     let r = location.hash.slice(1) || 'inicio';
@@ -1652,6 +1792,7 @@
     $app.querySelectorAll('[data-cal]').forEach((b) => b.onclick = () => { calMes = sumarMes(calMes || hoyIso().slice(0, 7), Number(b.dataset.cal)); calDia = null; render(); });
     $app.querySelectorAll('[data-dia]').forEach((b) => b.onclick = () => { calDia = calDia === b.dataset.dia ? null : b.dataset.dia; const y = window.scrollY; render(); window.scrollTo(0, y); });
     if (q('#bNuevoFijo')) q('#bNuevoFijo').onclick = nuevoFijo;
+    if (q('#bCandado')) q('#bCandado').onclick = abrirCandado;
     if (q('#bBanco')) q('#bBanco').onclick = conectarBanco;
     if (q('#bSyncBanco')) q('#bSyncBanco').onclick = () => sincronizarBanco(true);
     if (q('#bDesBanco')) q('#bDesBanco').onclick = desconectarBanco;
@@ -1731,6 +1872,7 @@
     }
   }
   cargarDesdeEnlace();
+  if (S.perfil) comprobarCandado();
   iniciarNube();
   window.addEventListener('hashchange', () => { if (cargarDesdeEnlace()) render(); window.scrollTo(0, 0); render(); });
   render();

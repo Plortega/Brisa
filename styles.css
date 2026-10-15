@@ -141,3 +141,19 @@ div.aj-row{cursor:default}
 #cqSave svg{width:18px;height:18px}
 /* v0.3.3 · Tu semana en 1 minuto */
 .sem-card{min-height:min(540px,calc(100vh - 260px));border-radius:34px;padding:30px 26px;display:flex;flex-direction:column;gap:16px;margin-bottom:0}
+/* v0.4.3 · Candado: huella o PIN */
+.lk{position:fixed;inset:0;z-index:60;background-color:var(--bg);background-image:radial-gradient(var(--dots) 1.3px,transparent 1.5px);background-size:20px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;padding:calc(96px + env(safe-area-inset-top)) 24px 0;overflow:hidden}
+.lk-finger{position:relative;width:150px;height:150px;border-radius:75px;border:0;background:var(--rose);color:var(--berry);display:flex;align-items:center;justify-content:center;margin:30px 0 28px;cursor:pointer}
+.lk-finger .pulse,.lk-finger .pulse2{position:absolute;inset:0;border-radius:75px;border:2px solid var(--rose2)}
+@keyframes brPulse{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.45);opacity:0}}
+.pulse{animation:brPulse 1.8s ease-out infinite}.pulse2{animation:brPulse 1.8s ease-out .9s infinite}
+.lk-alt{position:absolute;bottom:calc(48px + env(safe-area-inset-bottom));left:24px;right:24px;min-height:48px;border:0;background:transparent;color:var(--berry);font-size:15px;font-weight:800;cursor:pointer}
+.lk-msg{font-size:15px;color:var(--muted);margin-bottom:18px}.lk-msg.lk-err{color:var(--berry);font-weight:700}
+.lk-dots{display:flex;gap:16px;margin-bottom:36px}.lk-dots i{width:16px;height:16px;border-radius:8px;border:2px solid var(--rose2);display:block}.lk-dots i.on{background:var(--rose2)}
+.lk-keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 22px;width:100%;max-width:280px}
+.lk-key{width:72px;height:72px;border-radius:36px;border:1px solid var(--line);background:#fff;font-family:var(--serif);font-size:26px;color:var(--ink);cursor:pointer;justify-self:center;display:flex;align-items:center;justify-content:center}
+.lk-key:active{background:var(--rose)}.lk-key.lk-flat{border:0;background:transparent;color:var(--berry)}
+.lk-in-sheet{display:flex;flex-direction:column;align-items:center;padding:12px 0 4px}
+@keyframes brShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.shake{animation:brShake .3s ease-in-out 2}
+@media (prefers-reduced-motion:reduce){.pulse,.pulse2{animation:none;opacity:0}.shake{animation:none}}
