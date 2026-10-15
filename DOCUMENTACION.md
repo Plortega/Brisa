@@ -2,7 +2,7 @@
 
 Brisa es una app web instalable (PWA) en HTML, CSS y JavaScript sin frameworks. Funciona entera en el móvil: lee los movimientos del banco, los categoriza y calcula cuánto se puede gastar hoy. Opcionalmente guarda una copia en Supabase y trae los movimientos de BBVA a través de Enable Banking.
 
-Versión documentada: **0.4.4** (octubre de 2026). La guía para quien usa la app está en [`guia.html`](guia.html).
+Versión documentada: **0.4.5** (octubre de 2026). La guía para quien usa la app está en [`guia.html`](guia.html).
 
 ---
 
@@ -188,6 +188,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.4.5 | 15 oct 2026 | Colores alineados con el manual de marca: la tarjeta del finde en melocotón |
 | 0.4.4 | 15 oct 2026 | Guía de uso (`guia.html`), enlazada desde Ajustes |
 | 0.4.3 | 15 oct 2026 | Entrar con huella o PIN |
 | 0.4.2 | 15 oct 2026 | Arreglo: la vuelta de BBVA ya no se come el enlace de inicio de sesión |
