@@ -1,9 +1,9 @@
-/* Brisa · v0.4.6 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.7 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.6';
+  const VERSION_APP = '0.4.7';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -216,7 +216,20 @@
       const n = incorporarBanco(r);
       guardar(); location.hash = '#inicio'; render();
       toast(`¡BBVA conectado! ${n} ${n === 1 ? 'movimiento nuevo' : 'movimientos nuevos'}`);
-    } catch (e) { console.error(e); toast('No he podido terminar la conexión: ' + e.message); }
+    } catch (e) { console.error(e); toast('No he podido terminar la conexión: ' + e.message); comprobarBanco(); }
+  }
+  // Si la conexión ya existe en la nube (p. ej. se creó desde otro móvil o la vuelta de BBVA
+  // no llegó a apuntarse), la app la adopta y trae los movimientos.
+  async function comprobarBanco() {
+    if (!NUBE || !nube.email || banco.ocupado) return;
+    try {
+      const est = await llamarBanco('estado');
+      if (est && est.conectado) {
+        S.banco = { conectado: true, hasta: est.valid_until, ultima: 0, cuentas: est.cuentas, caducada: est.error === 'caducada' };
+        guardar(); render();
+        await sincronizarBanco(true);
+      }
+    } catch (e) { console.error(e); }
   }
   async function desconectarBanco() {
     if (!confirm('¿Desconectar BBVA? Brisa dejará de traer tus movimientos y volverás a subir el Excel.')) return;
@@ -237,6 +250,7 @@
           render();
           // Al abrir: termina la conexión con BBVA si venimos de autorizar, o trae lo nuevo cada 2 horas
           if (vuelta && !vuelta.hecho) terminarConexion();
+          else if (!S.banco || !S.banco.conectado) comprobarBanco();
           else if (bancoActivo() && (!S.banco.ultima || Date.now() - S.banco.ultima > 2 * 3600000 || S.movs.some((m) => m.origen === 'banco' && !m.cuenta))) sincronizarBanco(false);
         });
       }
