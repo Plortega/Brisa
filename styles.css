@@ -129,3 +129,13 @@ div.aj-row{cursor:default}
 .modal{position:relative;width:100%;max-width:380px;background:var(--rose);border-radius:34px;padding:40px 26px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;box-shadow:0 24px 60px rgba(176,58,114,.25)}
 .d1{animation-delay:.1s}.d2{animation-delay:.4s}.d3{animation-delay:.7s}.d4{animation-delay:1s}.d5{animation-delay:1.3s}.d6{animation-delay:.55s}
 @media (prefers-reduced-motion:reduce){.scrim{animation:none}}
+/* v0.3.2 · ¿Me lo compro? */
+.cq-pill{display:flex;align-items:center;gap:12px;min-height:52px;border-radius:26px;background:#fff;border:1.5px dashed var(--rose3);padding:0 12px 0 8px;margin-bottom:12px;text-decoration:none;color:var(--ink)}
+.cq-pill .ic{width:36px;height:36px;border-radius:18px;background:var(--lilac);color:#6A3FA0;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cq-pill .ic svg{width:20px;height:20px}
+.cq-pill b{font-size:15px;font-weight:800;flex-grow:1}
+.cq-pill .cnt{font-size:12px;font-weight:700;color:var(--berry-d);background:#FCE4EE;padding:4px 10px;border-radius:12px;white-space:nowrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip-b{min-height:36px;padding:0 14px;border-radius:18px;border:1px solid var(--line2);background:#fff;font-size:13px;font-weight:700;cursor:pointer}
+.chip-b[aria-pressed=true]{background:var(--rose);color:var(--berry-d);border-color:var(--rose3)}
+#cqSave svg{width:18px;height:18px}

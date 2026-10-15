@@ -1,9 +1,9 @@
-/* Brisa · v0.3.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.3.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.3.1';
+  const VERSION_APP = '0.3.2';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -81,6 +81,8 @@
       S.v3 = true;
     }
     S.fijos = S.fijos || []; S.fijosEstado = S.fijosEstado || {}; S.fijosIgnorados = S.fijosIgnorados || {};
+    // v0.3.2: ¿Me lo compro? — compras reservadas y lista de deseos
+    S.reservas = S.reservas || []; S.deseos = S.deseos || [];
     S.reglas = S.reglas || { reglasUsuario: {}, palabras: [], importes: [] };
     S.reglas.reglasUsuario = S.reglas.reglasUsuario || {}; S.reglas.palabras = S.reglas.palabras || []; S.reglas.importes = S.reglas.importes || [];
     if (S.perfil && !RITMOS[S.perfil.ritmo]) S.perfil.ritmo = 'equilibrado';
@@ -191,6 +193,7 @@
     repeat: ic2('M5 12a7 7 0 0 1 12-4.9L19 9v-4M19 12a7 7 0 0 1-12 4.9L5 15v4', '<path d="M19 5v4h-4"/><path d="M5 19v-4h4"/><path d="M5.5 10a7 7 0 0 1 12.3-2.2L19 9M18.5 14a7 7 0 0 1-12.3 2.2L5 15"/>'),
     sun: ic2('M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z', '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>'),
     alert: ic2('M12 3.5 21 19.5H3z', '<path d="M12 3.5 21 19.5H3z"/><path d="M12 10v4.5"/><circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/>'),
+    bag: ic2('M5 8h14l-1.2 10.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z', '<path d="M5 8h14l-1.2 10.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>'),
     plus: '<svg viewBox="0 0 24 24" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>',
     close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>'
   };
@@ -384,9 +387,12 @@
       .sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.imp || 0) - (a.imp || 0) || (a.ord || 0) - (b.ord || 0))[0];
     // Pagos con tarjeta retenidos: el Excel no los trae, se apuntan a mano desde la app del banco
     const retenido = S.retenido && S.retenido.importe > 0 ? Number(S.retenido.importe) : 0;
+    // Compras de «¿Me lo compro?» que aún no han llegado en el Excel
+    const reservas = reservasActivas();
+    const reservado = reservas.reduce((a, r) => a + Number(r.importe), 0);
     let modoSaldo = false, disponible = null;
-    if (ult && ult.fecha >= inicio) { modoSaldo = true; disponible = ult.saldo - pendiente - retenido; }
-    const libre = Math.max(0, modoSaldo ? Math.min(queda, disponible) : queda);
+    if (ult && ult.fecha >= inicio) { modoSaldo = true; disponible = ult.saldo - pendiente - retenido - reservado; }
+    const libre = Math.max(0, modoSaldo ? Math.min(queda - reservado, disponible) : queda - reservado);
     // Reparto del dinero libre hasta el cobro según el peso de cada día de la semana
     const lista = []; for (let k = 0; k < restantes; k++) lista.push(masDias(hoy, k));
     const pesoDe = (f) => H.pesos[aDate(f).getDay()] || 1;
@@ -398,7 +404,7 @@
     const aViernes = dw === 0 || dw >= 5 ? 0 : 5 - dw;
     const finde = reparto.filter((r) => { const d = dias(hoy, r.fecha); const w = aDate(r.fecha).getDay(); return d >= aViernes && d <= aViernes + 2 && (w === 5 || w === 6 || w === 0); });
     return { inicio, fin, restantes, gastado, rescates, forzados, porCat, presupuesto, ahorro: P.paraTi, P, H, queda, hoyPuedes,
-      modoSaldo, retenido, saldo: ult ? ult.saldo : null, saldoFecha: ult ? ult.fecha : null, pendiente, fijosC, disponible, libre,
+      modoSaldo, retenido, reservado, reservas, saldo: ult ? ult.saldo : null, saldoFecha: ult ? ult.fecha : null, pendiente, fijosC, disponible, libre,
       reparto, finde, findeTotal: finde.reduce((a, r) => a + r.importe, 0), grandes };
   }
 
@@ -558,6 +564,134 @@
   }
   const porRevisar = () => S.movs.filter((m) => cat(m).confianza < 0.7 && m.importe < 0);
 
+  /* ---------- ¿Me lo compro? ---------- */
+  const PLZ_BUSCA = 'klarna(?!.*member)|scalapay';
+  // Una reserva se cumple cuando llega en el Excel un cargo de su importe (±10 %, mínimo 1 €)
+  // desde la víspera de la compra. Cada cargo cumple como mucho una reserva.
+  function reservasActivas() {
+    const usados = new Set();
+    return (S.reservas || []).filter((r) => {
+      const imp = Number(r.importe);
+      const m = S.movs.find((x) => x.importe < 0 && !usados.has(x.id) && (x.fechaValor || x.fecha) >= masDias(r.fecha, -1) && x.fecha >= masDias(r.fecha, -1)
+        && Math.abs(-x.importe - imp) <= Math.max(1, imp * 0.1) && !deFijo(x));
+      if (m) { usados.add(m.id); return false; }
+      return true;
+    });
+  }
+  // Veredicto: go = adelante · tight = cabe pero muy justa · next = después del cobro · rescue = solo rescatando
+  function juzgarCompra(c, A, modo, n) {
+    const L = c.libre;
+    const enCiclo = modo === 'plazos' ? A / n : A;
+    const left = L - enCiclo;
+    const ratio = L > 0 ? c.hoyPuedes / L : 1 / Math.max(1, c.restantes);
+    const diario = Math.max(0, left) * ratio;
+    const B = Math.max(1, c.presupuesto);
+    let kind;
+    if (left >= 0 && diario >= 4) kind = 'go';
+    else if (left >= 0) kind = 'tight';
+    else if (modo !== 'plazos' && A <= B * 0.25) kind = 'next';
+    else kind = 'rescue';
+    return { enCiclo, left, diario, kind, rescate: Math.max(0, -left), B };
+  }
+  const CQ = { item: '', importe: '', modo: 'once', n: 4, hecho: null };
+  const PIX_LOST = PIX.empty.replace(/#FADCE8/g, '#FFFFFF').replace('<svg', '<svg style="opacity:.55"');
+  function resultadoCompra() {
+    const c = ciclo();
+    if (CQ.hecho) {
+      const h = CQ.hecho;
+      return `<section class="hero pop" style="background:var(--mint)">
+        ${orn(22, '#fff', 'top:16px;right:20px')}
+        <div class="pix" style="font-size:13px;color:var(--mint-d);letter-spacing:.5px">RESERVADO</div>
+        <div class="h1" style="font-size:24px;margin:6px 0 8px;padding-right:36px">Hecho: ${esc(h.nombre.toLowerCase())}</div>
+        <p style="margin:0;font-size:14px;line-height:1.45;color:#2E4A3C">${h.tipo === 'plazos'
+          ? `He apuntado ${h.n} cuotas de ${eur(h.cuota, true)} en tus pagos fijos; la primera la resto ya. Hoy puedes gastar ${eur(c.hoyPuedes)}. Cuando el cargo aparezca en el Excel, lo cruzo solo.`
+          : `He restado ${eur(h.importe, true)} de tu número del día: ahora hoy puedes gastar ${eur(c.hoyPuedes)}. Cuando el cargo aparezca en el Excel, lo cruzo y quito la reserva.`}</p>
+        <div class="btns" style="margin-top:14px"><a class="btn" href="#inicio" style="background:var(--mint-d)">Volver a Inicio</a><button type="button" class="btn ghost" id="cqUndo" style="width:auto;background:transparent;border:1.5px solid var(--mint-d);color:var(--mint-d)">Deshacer</button></div>
+      </section>`;
+    }
+    const A = numero(CQ.importe);
+    if (!(A > 0)) return `<div class="card dash" style="text-align:center;color:var(--muted);line-height:1.5">Escribe qué quieres y cuánto cuesta. Brisa te dice cómo queda tu día, tus corazones y tu meta.</div>`;
+    const nombre = CQ.item.trim() || 'Esto';
+    const plazos = CQ.modo === 'plazos';
+    const j = juzgarCompra(c, A, CQ.modo, CQ.n);
+    const cuota = A / CQ.n;
+    const ultMes = MESES_L[(aDate(hoyIso()).getMonth() + CQ.n - 1) % 12];
+    const usados = c.rescates - c.forzados; const lim = Number(S.limiteRescates) || 0;
+    let v;
+    if (j.kind === 'go') v = { tag: 'ADELANTE', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Sí, cabe sin tocar tu ahorro', b: plazos
+      ? `Hoy pagas la 1.ª cuota (${eur(cuota, true)}) y las otras ${CQ.n - 1} van a tus pagos fijos hasta ${ultMes}. Hoy podrías gastar ${eur(j.diario)}.`
+      : `${esc(nombre)} entra en lo que te queda este mes. Hoy podrías gastar ${eur(j.diario)} en vez de ${eur(c.hoyPuedes)}.` };
+    else if (j.kind === 'tight') v = { tag: 'ESPERA AL COBRO', bg: 'var(--butter)', tc: 'var(--butter-d)', t: 'Cabe, pero te deja muy justa',
+      b: `Te quedarían ${eur(j.diario)} al día hasta el ${aDate(c.fin).getDate()}. Si esperas a cobrar (en ${c.restantes} días), lo pagas sin apretarte.` };
+    else if (j.kind === 'next') v = { tag: 'ESPERA AL COBRO', bg: 'var(--butter)', tc: 'var(--butter-d)', t: `Después del ${aDate(c.fin).getDate()}, sí`,
+      b: `Este mes te faltan ${eur(j.rescate)}. Con la nómina entra sin tocar tu ahorro: el mes que viene te quedarían ${eur((j.B - A) / 30)} al día.` };
+    else {
+      const margen = lim - usados - j.rescate;
+      v = { tag: 'SOLO RESCATANDO', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Tocaría tu ahorro',
+        b: `Te faltan ${eur(j.rescate)}: tendrías que rescatarlos del ahorro. Llevas ${eur(usados)} de ${eur(lim)} este mes${margen < 0 ? `, así que te pasarías en ${eur(-margen)}.` : ` y te quedarían ${eur(margen)} de margen.`}${plazos ? '' : ' Pagarlo a plazos o esperar al cobro lo suaviza.'}` };
+    }
+    const base = Math.max(1, c.presupuesto);
+    const hAntes = corazonesN(c), hDesp = Math.max(0, Math.min(10, Math.round(Math.max(0, j.left) / base * 10)));
+    const w = (x) => x.replace('<svg', '<svg width="21" height="18"');
+    const hearts = w(PIX.full).repeat(hDesp) + w(PIX_LOST).repeat(Math.max(0, hAntes - hDesp)) + w(PIX.empty).repeat(10 - Math.max(hAntes, hDesp));
+    const meta = ahorro().metas.find((x) => x.ahorrado < x.objetivo);
+    const porDia = c.P.paraTi / 30;
+    const retraso = j.kind === 'rescue' && porDia > 0 ? Math.ceil(j.rescate / porDia) : 0;
+    const filas = [
+      ['Hoy puedes gastar', eur(c.hoyPuedes), eur(j.diario), j.diario < 4 ? 'var(--berry)' : 'var(--mint-d)'],
+      ['Del ahorro', '', j.kind === 'rescue' ? 'Rescatas ' + eur(j.rescate) : 'Nada', j.kind === 'rescue' ? 'var(--berry)' : 'var(--mint-d)'],
+      [meta ? esc(meta.nombre) : 'Tu ahorro', '', j.kind !== 'rescue' ? 'Llega igual' : retraso ? retraso + (retraso === 1 ? ' día' : ' días') + ' más tarde' : '−' + eur(j.rescate), j.kind === 'rescue' ? 'var(--berry)' : 'var(--mint-d)']
+    ];
+    if (plazos) filas.push(['Pagos fijos', '', '+' + eur(cuota, true) + '/mes hasta ' + ultMes, 'var(--lilac-d)']);
+    return `<section class="hero" style="background:${v.bg}">
+        ${orn(24, '#fff', 'top:16px;right:20px')}${orn(12, '#fff', 'top:48px;right:52px')}
+        <div class="pix" style="font-size:13px;color:${v.tc};letter-spacing:.5px">${v.tag}</div>
+        <div class="h1" style="font-size:24px;margin:6px 0 8px;padding-right:40px;line-height:1.15">${v.t}</div>
+        <p style="margin:0;font-size:14px;line-height:1.45;color:#4A2E3C">${v.b}</p>
+      </section>
+      <div class="card" style="padding:4px 16px">
+        <div style="padding:12px 0 10px;border-bottom:1px solid var(--line)">
+          <div class="row small"><span class="muted">Tus corazones</span><span style="color:#6A3A50"><b>${hDesp}</b> de 10 · ${hAntes > hDesp ? 'pierdes ' + (hAntes - hDesp) : 'no pierdes ninguno'}</span></div>
+          <div class="hearts" role="img" aria-label="Te quedarían ${hDesp} de 10 corazones">${hearts}</div>
+        </div>
+        ${filas.map((f, i) => `<div class="row" style="min-height:44px;${i < filas.length - 1 ? 'border-bottom:1px solid var(--line)' : ''}"><span class="small muted">${f[0]}</span><span style="white-space:nowrap">${f[1] ? `<span class="small muted" style="text-decoration:line-through">${f[1]}</span> ` : ''}<b class="num" style="font-size:16px;color:${f[3]}">${f[2]}</b></span></div>`).join('')}
+      </div>
+      <button type="button" class="btn" id="cqBuy">${j.kind === 'rescue' ? 'Me lo compro igualmente' : 'Me lo compro'}</button>
+      <button type="button" class="btn ghost" id="cqSave" style="margin-top:8px;border:1.5px dashed var(--rose3);color:var(--berry-d)">${ic2('M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z', '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>', ' width="18" height="18"')}Guardar para luego</button>
+      <p class="xs muted" style="text-align:center;line-height:1.4;margin:8px 0 0">Si lo compras, lo reservo y lo resto de tu número del día hasta que aparezca en el Excel.</p>`;
+  }
+  function estadoDeseo(c, a) {
+    const k = juzgarCompra(c, a, 'once', 1).kind;
+    if (k === 'go') return { t: 'Cabe ya', bg: 'var(--mint)', co: 'var(--mint-d)', cabe: true };
+    if (k === 'tight' || k === 'next') return { t: 'Después del ' + aDate(c.fin).getDate(), bg: 'var(--butter)', co: 'var(--butter-d)' };
+    return { t: 'Aún no cabe · te aviso', bg: 'var(--rose)', co: 'var(--berry-d)' };
+  }
+  function comprar() {
+    const A = numero(CQ.importe); if (!(A > 0)) return;
+    const nombre = CQ.item.trim() || 'Compra';
+    const hoy = hoyIso();
+    if (CQ.modo === 'plazos') {
+      const n = CQ.n; const cuota = Math.round(A / n * 100) / 100;
+      const fijo = { id: 'f' + Date.now(), nombre: nombre + ' · a plazos', importe: cuota, dia: Number(hoy.slice(8, 10)), busca: PLZ_BUSCA,
+        cuotas: generarCuotas(hoy, n, cuota, Math.round((A - cuota * (n - 1)) * 100) / 100) };
+      S.fijos.push(fijo);
+      CQ.hecho = { tipo: 'plazos', fijoId: fijo.id, nombre, cuota, n };
+    } else {
+      const r = { id: 'r' + Date.now(), nombre, importe: Math.round(A * 100) / 100, fecha: hoy };
+      S.reservas.push(r);
+      CQ.hecho = { tipo: 'once', resId: r.id, nombre, importe: r.importe };
+    }
+    // Si venía de la lista de deseos, sale de ella
+    S.deseos = S.deseos.filter((d) => !(d.nombre === nombre && Math.abs(d.importe - A) < 0.01));
+    guardar(); render();
+  }
+  function deshacerCompra() {
+    const h = CQ.hecho; if (!h) return;
+    if (h.tipo === 'plazos') S.fijos = S.fijos.filter((x) => x.id !== h.fijoId);
+    else S.reservas = S.reservas.filter((r) => r.id !== h.resId);
+    CQ.hecho = null; guardar(); render(); toast('Deshecho');
+  }
+
   /* ---------- Importar el Excel ---------- */
   $file.addEventListener('change', async () => {
     const f = $file.files[0]; $file.value = '';
@@ -580,6 +714,8 @@
       S.movs = S.movs.concat(nuevos).sort((a, b) => b.fecha.localeCompare(a.fecha));
       const fechas = leidos.map((m) => m.fecha).sort();
       S.ultimaImportacion = { cuando: hoyIso(), ids: nuevos.map((m) => m.id), duplicados: dup, desde: fechas[0], hasta: fechas[fechas.length - 1] };
+      // Las compras reservadas que ya han llegado en el Excel dejan de reservarse
+      S.reservas = reservasActivas();
       guardar();
       setTimeout(() => (location.hash = '#importado'), Math.max(0, 1400 - (Date.now() - t0)));
     } catch (e) {
@@ -743,11 +879,14 @@
       <div class="pix" style="font-size:14px;color:#8C2A5A;letter-spacing:.5px">HOY PUEDES GASTAR</div>
       <div class="big" style="margin:8px 0 10px">${eur(c.hoyPuedes)}</div>
       ${c.modoSaldo ? `
-      <div style="font-size:13px;line-height:1.5;color:#4A2E3C;margin-bottom:10px">${c.disponible > 0 ? 'Con lo que tienes de verdad:' : 'Ojo: tus pagos pendientes superan tu saldo.'} <b>${eur(c.saldo)}</b> en cuenta${c.retenido ? ` − <a href="#fijos" style="color:var(--berry-d)">${eur(c.retenido)} retenido</a>` : ''} − <a href="#fijos" style="color:var(--berry-d)">${eur(c.pendiente)} de fijos</a>.</div>` : `
-      <div style="font-size:14px;line-height:1.45;color:#4A2E3C;margin-bottom:12px">${c.queda >= 0 ? `Sin pasarte hasta el ${finTxt} y apartando ${eur(c.ahorro)} para ti.` : `Te has pasado ${eur(-c.queda)} este mes. Mañana lo vemos con calma.`}</div>`}
+      <div style="font-size:13px;line-height:1.5;color:#4A2E3C;margin-bottom:10px">${c.disponible > 0 ? 'Con lo que tienes de verdad:' : 'Ojo: tus pagos pendientes superan tu saldo.'} <b>${eur(c.saldo)}</b> en cuenta${c.retenido ? ` − <a href="#fijos" style="color:var(--berry-d)">${eur(c.retenido)} retenido</a>` : ''} − <a href="#fijos" style="color:var(--berry-d)">${eur(c.pendiente)} de fijos</a>${c.reservado ? ` − <a href="#comprar" style="color:var(--berry-d)">${eur(c.reservado)} reservado</a>` : ''}.</div>` : `
+      <div style="font-size:14px;line-height:1.45;color:#4A2E3C;margin-bottom:12px">${c.queda >= 0 ? `Sin pasarte hasta el ${finTxt} y apartando ${eur(c.ahorro)} para ti.` : `Te has pasado ${eur(-c.queda)} este mes. Mañana lo vemos con calma.`}${c.reservado ? ` Ya descuento <a href="#comprar" style="color:var(--berry-d)">${eur(c.reservado)} reservado</a>.` : ''}</div>`}
       <div class="hearts" role="img" aria-label="Te quedan ${n} de 10 corazones: ${eur(c.libre)} libres de ${eur(c.presupuesto)}">${corazones(n, 21, 18)}</div>
       <div class="row small" style="color:#6A3A50;margin-top:8px"><span style="white-space:nowrap">Te quedan ${n} de 10 ♡ · ${eur(c.libre)}</span><span style="white-space:nowrap">Hasta el ${aDate(c.fin).getDate()} · ${c.restantes} días</span></div>
     </section>
+    <a class="cq-pill" href="#comprar"><span class="ic">${IC.bag}</span><b>¿Me lo compro?</b>${S.deseos.length ? `<span class="cnt">${S.deseos.length} ${S.deseos.length === 1 ? 'deseo' : 'deseos'}</span>` : ''}${IC.chev}</a>
+    ${S.deseos.filter((d) => estadoDeseo(c, d.importe).cabe).slice(0, 1).map((d) => linkCard({ attrs: `data-deseo="${esc(d.id)}"`, style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.bag,
+      titulo: `Ya cabe: ${esc(d.nombre)} (${eur(d.importe)})`, sub: 'Está en tu lista de deseos · toca para decidir', subStyle: 'color:var(--mint-d)' })).join('')}
     ${faltanFijos() ? linkCard({ href: '#fijos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Faltan tus pagos fijos', sub: 'Sin ellos tu número del día sale más alto de lo real. Añádelos o cárgalos desde Ajustes', subStyle: 'color:#5A4238' }) : ''}
     ${pronto.map((q) => linkCard({ href: '#fijos', style: 'background:#fff;border:1px solid var(--line)', icStyle: 'background:var(--lilac);color:var(--lilac-d)', icon: IC.cal,
       titulo: `${cuando(q.fecha).charAt(0).toUpperCase() + cuando(q.fecha).slice(1)} te cobran ${eur(q.pendiente, true)}`, sub: esc(q.fijo.nombre) + (q.de ? ` · cuota ${q.n} de ${q.de}` : '') + ' · ya está reservado' })).join('')}
@@ -758,6 +897,41 @@
     ${linkCard({ href: '#metas', style: 'background:#fff;border:1.5px dashed #F0C3D5', icStyle: 'background:var(--rose);color:var(--berry)', icon: IC.uturn, titulo: `Rescates: ${eur(c.rescates - c.forzados)} de ${eur(S.limiteRescates)}`, sub: c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : 'Lo que ha vuelto de tu ahorro este mes' })}
     ${plz.length > 1 ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.card, titulo: `${plz.length} cargos de pago a plazos`, sub: [...new Set(plz.map((p) => p.prov))].join(', ') + ' · ¿cuántas cuotas quedan?', subStyle: 'color:var(--butter-d)' }) : tarjetaPlazos(plz)}
     ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:#5A4238' }) : ''}`;
+  };
+
+  R.comprar = () => {
+    if (!S.movs.length) return R.inicio();
+    const c = ciclo();
+    const chip = (attr, val, label, on) => `<button type="button" class="chip-b" ${attr}="${val}" aria-pressed="${on}">${label}</button>`;
+    return `
+    <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver a Inicio">${IC.back}</a><div style="flex-grow:1"><h1>¿Me lo compro?${SPARK}</h1><div class="small muted">Pregúntale a Brisa antes de pagar</div></div></div>
+    <section class="card dash" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px">
+        <label class="field" style="margin:0">¿Qué es?<input id="cqItem" value="${esc(CQ.item)}" placeholder="Unas zapatillas" autocomplete="off"></label>
+        <label class="field" style="margin:0">¿Cuánto? (€)<input id="cqImp" inputmode="decimal" value="${esc(CQ.importe)}" placeholder="0" autocomplete="off"></label>
+      </div>
+      <div class="chips">${[25, 120, 300, 600].map((x) => chip('data-cqp', x, x + ' €', String(x) === String(CQ.importe))).join('')}</div>
+      <div>
+        <div class="field" style="margin-bottom:8px">¿Cómo lo pagarías?</div>
+        <div class="seg" role="group" aria-label="Forma de pago" style="margin-bottom:${CQ.modo === 'plazos' ? '10px' : '0'}">
+          <button type="button" data-cqm="once" aria-pressed="${CQ.modo !== 'plazos'}">De una vez</button>
+          <button type="button" data-cqm="plazos" aria-pressed="${CQ.modo === 'plazos'}">A plazos</button>
+        </div>
+        ${CQ.modo === 'plazos' ? `<div class="chips" style="align-items:center"><span class="small muted">Cuotas</span>${[3, 4, 6].map((x) => chip('data-cqn', x, x + ' cuotas', CQ.n === x)).join('')}</div>
+        <p class="xs muted" style="margin:8px 0 0;line-height:1.4">Klarna o Scalapay: la 1.ª cuota se paga hoy y el resto va a tus pagos fijos.</p>` : ''}
+      </div>
+    </section>
+    <div id="cqRes">${resultadoCompra()}</div>
+    ${c.reservas.length ? `<div class="card" style="padding:12px 16px;margin-top:12px">
+      <b class="small" style="font-weight:800">Reservado, esperando al Excel</b>
+      ${c.reservas.map((r) => `<div class="row small" style="min-height:40px"><span>${esc(r.nombre)} <span class="muted">· ${fmtF(r.fecha)}</span></span><span style="display:flex;align-items:center;gap:4px"><b>${eur(r.importe, true)}</b><button type="button" class="icon-btn sm" style="border:0" data-cqx="${esc(r.id)}" aria-label="Quitar la reserva de ${esc(r.nombre)}">${IC.close}</button></span></div>`).join('')}
+    </div>` : ''}
+    <div class="row" style="align-items:baseline;margin:20px 0 10px"><span class="h1" style="font-size:20px">Tu lista de deseos</span><span class="xs muted">Te aviso cuando quepa</span></div>
+    ${S.deseos.length ? S.deseos.map((d) => { const e = estadoDeseo(c, d.importe); return `<div class="card" style="display:flex;align-items:center;gap:8px;padding:10px 6px 10px 14px;margin-bottom:8px">
+      <div style="display:flex;flex-direction:column;gap:4px;flex-grow:1;min-width:0"><b style="font-size:14px">${esc(d.nombre)} · ${eur(d.importe)}</b><span class="chip" style="align-self:flex-start;font-size:11px;font-weight:800;background:${e.bg};color:${e.co}">${e.t}</span></div>
+      <button type="button" class="btn ghost small" data-cqv="${esc(d.id)}" style="color:var(--berry-d)">Mirar</button>
+      <button type="button" class="icon-btn sm" style="border:0" data-cqd="${esc(d.id)}" aria-label="Quitar ${esc(d.nombre)} de la lista">${IC.close}</button>
+    </div>`; }).join('') : '<div class="card dash small" style="text-align:center;color:var(--muted)">Aún no hay nada guardado.</div>'}`;
   };
 
   R.finde = () => {
@@ -1271,6 +1445,34 @@
     $app.querySelectorAll('[data-cal]').forEach((b) => b.onclick = () => { calMes = sumarMes(calMes || hoyIso().slice(0, 7), Number(b.dataset.cal)); calDia = null; render(); });
     $app.querySelectorAll('[data-dia]').forEach((b) => b.onclick = () => { calDia = calDia === b.dataset.dia ? null : b.dataset.dia; const y = window.scrollY; render(); window.scrollTo(0, y); });
     if (q('#bNuevoFijo')) q('#bNuevoFijo').onclick = nuevoFijo;
+    // ¿Me lo compro?
+    const verDeseo = (id) => { const d = S.deseos.find((x) => x.id === id); if (!d) return; Object.assign(CQ, { item: d.nombre, importe: String(d.importe).replace('.', ','), modo: 'once', hecho: null }); };
+    $app.querySelectorAll('[data-deseo]').forEach((b) => b.onclick = () => { verDeseo(b.dataset.deseo); location.hash = '#comprar'; });
+    if (r === 'comprar') {
+      const res = q('#cqRes');
+      const refrescar = () => { res.innerHTML = resultadoCompra(); };
+      if (q('#cqItem')) q('#cqItem').oninput = (e) => { CQ.item = e.target.value; if (CQ.hecho) CQ.hecho = null; refrescar(); };
+      if (q('#cqImp')) q('#cqImp').oninput = (e) => {
+        CQ.importe = e.target.value; if (CQ.hecho) CQ.hecho = null; refrescar();
+        $app.querySelectorAll('[data-cqp]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cqp === CQ.importe));
+      };
+      $app.querySelectorAll('[data-cqp]').forEach((b) => b.onclick = () => { CQ.importe = b.dataset.cqp; CQ.hecho = null; render(); });
+      $app.querySelectorAll('[data-cqm]').forEach((b) => b.onclick = () => { CQ.modo = b.dataset.cqm; CQ.hecho = null; render(); });
+      $app.querySelectorAll('[data-cqn]').forEach((b) => b.onclick = () => { CQ.n = Number(b.dataset.cqn); CQ.hecho = null; render(); });
+      $app.querySelectorAll('[data-cqv]').forEach((b) => b.onclick = () => { verDeseo(b.dataset.cqv); render(); window.scrollTo(0, 0); });
+      $app.querySelectorAll('[data-cqd]').forEach((b) => b.onclick = () => { S.deseos = S.deseos.filter((x) => x.id !== b.dataset.cqd); guardar(); render(); });
+      $app.querySelectorAll('[data-cqx]').forEach((b) => b.onclick = () => { S.reservas = S.reservas.filter((x) => x.id !== b.dataset.cqx); if (CQ.hecho && CQ.hecho.resId === b.dataset.cqx) CQ.hecho = null; guardar(); render(); toast('Reserva quitada'); });
+      res.onclick = (e) => {
+        if (e.target.closest('#cqBuy')) comprar();
+        else if (e.target.closest('#cqUndo')) deshacerCompra();
+        else if (e.target.closest('#cqSave')) {
+          const A = numero(CQ.importe); if (!(A > 0)) return;
+          const nombre = CQ.item.trim() || 'Sin nombre';
+          S.deseos.push({ id: 'd' + Date.now(), nombre, importe: Math.round(A * 100) / 100, creado: hoyIso() });
+          guardar(); render(); toast(nombre + ' está en tu lista de deseos. Te aviso cuando quepa.');
+        }
+      };
+    }
     if (q('#fCuenta')) q('#fCuenta').onsubmit = async (e) => {
       e.preventDefault(); const b = e.target.querySelector('button'); b.disabled = true; b.textContent = 'Enviando…';
       const { error } = await NUBE.auth.signInWithOtp({ email: e.target.email.value.trim(), options: { emailRedirectTo: location.origin + location.pathname } });
