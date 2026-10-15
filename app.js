@@ -1,9 +1,9 @@
-/* Brisa · v0.4.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.4 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.3';
+  const VERSION_APP = '0.4.4';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -1435,6 +1435,7 @@
       ${filaAj({ t: 'Tu nombre', input: `<input class="aj-in" data-campo="nombre" value="${esc(p.nombre)}" aria-label="Tu nombre" style="width:120px;text-align:left">` })}
       ${filaAj({ btn: 'bExport', t: 'Descargar copia', s: `Todo vive solo en este móvil: ${S.movs.length} movimientos, ${nReglas} reglas y ${S.fijos.length} pagos fijos` })}
       ${filaAj({ btn: 'bImport', t: 'Restaurar copia o reglas', s: 'Desde un archivo .json' })}
+      ${filaAj({ href: 'guia.html', t: 'Guía de uso', s: 'Cómo funciona cada pantalla y qué pasa con tus datos' })}
     </div>
     <button class="btn ghost" id="bBorrar" style="color:var(--berry);border:0;background:none">Borrar todos mis datos</button>
     <p class="xs muted" style="text-align:center;margin-top:8px">Brisa v${VERSION_APP}</p>`;
