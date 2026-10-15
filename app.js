@@ -1,9 +1,9 @@
-/* Brisa · v0.4.5 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.6 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.5';
+  const VERSION_APP = '0.4.6';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -151,6 +151,10 @@
   }
   // Movimientos del banco → Brisa, sin repetir los que ya llegaron por Excel
   function incorporarBanco(r) {
+    // Solo la cuenta principal: lo que llegó antes de otras cuentas (p. ej. la de ahorro) se quita
+    const princ = (r.cuentas || []).find((c) => c.principal);
+    if (princ) S.movs = S.movs.filter((m) => m.origen !== 'banco' || m.cuenta === princ.fin);
+    if (S.banco && r.cuentas) S.banco.cuentas = r.cuentas;
     const leidos = (r.movimientos || []).map(taparMov);
     const refs = new Set(S.movs.map((m) => m.ref).filter(Boolean));
     const cuenta = {};
@@ -233,7 +237,7 @@
           render();
           // Al abrir: termina la conexión con BBVA si venimos de autorizar, o trae lo nuevo cada 2 horas
           if (vuelta && !vuelta.hecho) terminarConexion();
-          else if (bancoActivo() && (!S.banco.ultima || Date.now() - S.banco.ultima > 2 * 3600000)) sincronizarBanco(false);
+          else if (bancoActivo() && (!S.banco.ultima || Date.now() - S.banco.ultima > 2 * 3600000 || S.movs.some((m) => m.origen === 'banco' && !m.cuenta))) sincronizarBanco(false);
         });
       }
       else if (!nube.email && antes) render();

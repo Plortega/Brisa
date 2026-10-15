@@ -81,6 +81,7 @@ function aBrisa(t: any) {
     saldo: saldo !== undefined && saldo !== null ? Number(saldo) : (t._saldo ?? null),
     observaciones: tapar(t.note || ""),
     origen: "banco",
+    cuenta: t._fin || "",
   };
 }
 
@@ -102,7 +103,7 @@ Deno.serve(async (req) => {
 
     if (body.accion === "estado") {
       return json({ conectado: !!con?.session_id, valid_until: con?.valid_until || null, ultima_sync: con?.ultima_sync || null,
-        error: con?.error || null, cuentas: (con?.cuentas || []).map((c: any) => ({ nombre: c.nombre, fin: c.fin, saldo: c.saldo })) });
+        error: con?.error || null, cuentas: (con?.cuentas || []).map((c: any) => ({ nombre: c.nombre, fin: c.fin, saldo: c.saldo, principal: !!c.principal })) });
     }
 
     if (body.accion === "empezar") {
@@ -182,7 +183,7 @@ async function sincronizar(db: any, uid: string, con: any, body: any, psu: Recor
       c.saldo = saldo; c.saldo_fecha = new Date().toISOString();
     } catch (_) { /* sin saldo */ }
     const book = lista.filter((t) => (t.status || "BOOK") === "BOOK");
-    retenido += lista.filter((t) => t.status === "PDNG" && t.credit_debit_indicator === "DBIT").reduce((a, t) => a + Number(t.transaction_amount?.amount || 0), 0);
+    c._ret = lista.filter((t) => t.status === "PDNG" && t.credit_debit_indicator === "DBIT").reduce((a, t) => a + Number(t.transaction_amount?.amount || 0), 0);
     for (const [i, t] of book.entries()) {
       t._n = i;
       t._id = t.entry_reference || t.transaction_id ||
@@ -197,6 +198,19 @@ async function sincronizar(db: any, uid: string, con: any, body: any, psu: Recor
       if (error) throw error;
     }
   }
+  // La cuenta principal (la del día a día) es la que más movimientos tiene; se fija una vez.
+  // Las demás (p. ej. la de ahorro) no se mezclan con los gastos: solo se devuelve su saldo.
+  if (!cuentas.some((c: any) => c.principal) && cuentas.length) {
+    let mejor = cuentas[0], max = -1;
+    for (const c of cuentas) {
+      const { count } = await db.from("banco_movs").select("id", { count: "exact", head: true }).eq("user_id", uid).eq("cuenta", c.uid);
+      if ((count || 0) > max) { max = count || 0; mejor = c; }
+    }
+    mejor.principal = true;
+  }
+  // Lo retenido con tarjeta, solo de la cuenta principal
+  retenido = cuentas.filter((c: any) => c.principal).reduce((a: number, c: any) => a + (c._ret || 0), 0);
+  for (const c of cuentas) delete c._ret;
   await db.from("banco_conexion").update({ cuentas, ultima_sync: new Date().toISOString(), error: caducada ? "caducada" : null,
     actualizado: new Date().toISOString() }).eq("user_id", uid);
   if (caducada) return { caducada: true, movimientos: [] };
@@ -205,8 +219,8 @@ async function sincronizar(db: any, uid: string, con: any, body: any, psu: Recor
   const desdeApp = body.desde || masDias(hoy, -120);
   const { data: filas } = await db.from("banco_movs").select("raw, cuenta, fecha").eq("user_id", uid).gte("fecha", desdeApp);
   const movimientos: any[] = [];
-  for (const c of cuentas) {
-    const suyos = (filas || []).filter((f: any) => f.cuenta === c.uid).map((f: any) => f.raw)
+  for (const c of cuentas.filter((x: any) => x.principal)) {
+    const suyos = (filas || []).filter((f: any) => f.cuenta === c.uid).map((f: any) => { f.raw._fin = c.fin; return f.raw; })
       // Más reciente primero; dentro del día, el orden en que los da el banco
       .sort((a: any, b: any) => (b.booking_date || "").localeCompare(a.booking_date || "") || (a._n ?? 0) - (b._n ?? 0));
     let s = typeof c.saldo === "number" ? c.saldo : null;
@@ -218,5 +232,5 @@ async function sincronizar(db: any, uid: string, con: any, body: any, psu: Recor
       movimientos.push(aBrisa(t));
     }
   }
-  return { nuevos, retenido: Math.round(retenido * 100) / 100, movimientos, cuentas: cuentas.map((c: any) => ({ nombre: c.nombre, fin: c.fin, saldo: c.saldo })) };
+  return { nuevos, retenido: Math.round(retenido * 100) / 100, movimientos, cuentas: cuentas.map((c: any) => ({ nombre: c.nombre, fin: c.fin, saldo: c.saldo, principal: !!c.principal })) };
 }

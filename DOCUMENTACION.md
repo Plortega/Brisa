@@ -2,7 +2,7 @@
 
 Brisa es una app web instalable (PWA) en HTML, CSS y JavaScript sin frameworks. Funciona entera en el móvil: lee los movimientos del banco, los categoriza y calcula cuánto se puede gastar hoy. Opcionalmente guarda una copia en Supabase y trae los movimientos de BBVA a través de Enable Banking.
 
-Versión documentada: **0.4.5** (octubre de 2026). La guía para quien usa la app está en [`guia.html`](guia.html).
+Versión documentada: **0.4.6** (octubre de 2026). La guía para quien usa la app está en [`guia.html`](guia.html).
 
 ---
 
@@ -164,7 +164,8 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 - La clave privada está solo en el secreto `ENABLE_BANKING_KEY` de Supabase.
 - La app sincroniza al abrirse si han pasado más de 2 horas.
 - La vuelta de BBVA solo se reconoce si trae `state` y la conexión se empezó desde Brisa (marca `brisa:banco-pendiente`). El enlace del correo también vuelve con `?code=`, y no hay que tocarlo.
-- Si el banco no da el saldo tras cada movimiento, se reconstruye hacia atrás desde el saldo actual.
+- Si el banco no da el saldo tras cada movimiento (BBVA no lo da), se reconstruye hacia atrás desde el saldo actual. Comprobado: cuadra con el saldo del Excel en todos los movimientos.
+- **Solo la cuenta principal** (la que más movimientos tiene, fijada en la primera sincronización) llega a Brisa. Las demás cuentas vinculadas, como la de ahorro, se guardan en `banco_movs` pero no se mezclan con los gastos.
 
 **Desplegar la función:** con la CLI de Supabase (`supabase functions deploy banco`) o desde el panel. Requiere el secreto `ENABLE_BANKING_KEY` (el `.pem` completo, formato PKCS#8).
 
@@ -188,6 +189,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.4.6 | 15 oct 2026 | Conexión con BBVA: solo la cuenta principal (la de ahorro no se mezcla con los gastos) |
 | 0.4.5 | 15 oct 2026 | Colores alineados con el manual de marca: la tarjeta del finde en melocotón |
 | 0.4.4 | 15 oct 2026 | Guía de uso (`guia.html`), enlazada desde Ajustes |
 | 0.4.3 | 15 oct 2026 | Entrar con huella o PIN |
