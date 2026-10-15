@@ -1,9 +1,9 @@
-/* Brisa · v0.4.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.1';
+  const VERSION_APP = '0.4.2';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -145,6 +145,7 @@
     try {
       toast('Abriendo BBVA…');
       const r = await llamarBanco('empezar', { redirect: location.origin + location.pathname });
+      try { localStorage.setItem('brisa:banco-pendiente', String(Date.now())); } catch (e) {}
       location.href = r.url;
     } catch (e) { console.error(e); toast('No he podido abrir BBVA: ' + e.message); }
   }
@@ -189,8 +190,12 @@
   }
   // Vuelta desde BBVA: ?code=…&state=… en la dirección
   const vuelta = (() => {
+    // Solo es la vuelta de BBVA si trae «state» y la empezamos nosotros. El enlace del correo
+    // de la nube también vuelve con ?code= y ese es para iniciar sesión: no hay que tocarlo.
     const q = new URLSearchParams(location.search);
-    if (!q.get('code') && !q.get('error')) return null;
+    let esperando = false; try { esperando = !!localStorage.getItem('brisa:banco-pendiente'); } catch (e) {}
+    if (!q.get('state') || !esperando || (!q.get('code') && !q.get('error'))) return null;
+    try { localStorage.removeItem('brisa:banco-pendiente'); } catch (e) {}
     const v = { code: q.get('code'), state: q.get('state'), error: q.get('error'), desc: q.get('error_description') };
     history.replaceState(null, '', location.pathname + '#ajustes');
     return v;
