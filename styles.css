@@ -139,3 +139,5 @@ div.aj-row{cursor:default}
 .chip-b{min-height:36px;padding:0 14px;border-radius:18px;border:1px solid var(--line2);background:#fff;font-size:13px;font-weight:700;cursor:pointer}
 .chip-b[aria-pressed=true]{background:var(--rose);color:var(--berry-d);border-color:var(--rose3)}
 #cqSave svg{width:18px;height:18px}
+/* v0.3.3 · Tu semana en 1 minuto */
+.sem-card{min-height:min(540px,calc(100vh - 260px));border-radius:34px;padding:30px 26px;display:flex;flex-direction:column;gap:16px;margin-bottom:0}

@@ -1,9 +1,9 @@
-/* Brisa · v0.3.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.3.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.3.2';
+  const VERSION_APP = '0.3.3';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -896,7 +896,8 @@
     ${linkCard({ attrs: 'id="bSubirHome"', style: viejo ? 'background:var(--sky)' : 'background:#fff;border:1px solid var(--line)', icStyle: (viejo ? '' : 'background:var(--sky);') + 'color:var(--sky-d)', icon: IC.file, titulo: viejo ? 'Toca subir el Excel' : 'Subir el Excel de la semana', sub: 'Datos hasta el ' + fmtF(ultimo) })}
     ${linkCard({ href: '#metas', style: 'background:#fff;border:1.5px dashed #F0C3D5', icStyle: 'background:var(--rose);color:var(--berry)', icon: IC.uturn, titulo: `Rescates: ${eur(c.rescates - c.forzados)} de ${eur(S.limiteRescates)}`, sub: c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : 'Lo que ha vuelto de tu ahorro este mes' })}
     ${plz.length > 1 ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.card, titulo: `${plz.length} cargos de pago a plazos`, sub: [...new Set(plz.map((p) => p.prov))].join(', ') + ' · ¿cuántas cuotas quedan?', subStyle: 'color:var(--butter-d)' }) : tarjetaPlazos(plz)}
-    ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:#5A4238' }) : ''}`;
+    ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:#5A4238' }) : ''}
+    ${linkCard({ href: '#semana', style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.cal, titulo: 'Tu semana en 1 minuto', sub: (!S.semanaVista || dias(S.semanaVista, hoyIso()) >= 6) ? '4 tarjetas. Sin Excel, sin cuentas.' : 'Ya la has visto esta semana', subStyle: 'color:#3B4A43' })}`;
   };
 
   R.comprar = () => {
@@ -932,6 +933,89 @@
       <button type="button" class="btn ghost small" data-cqv="${esc(d.id)}" style="color:var(--berry-d)">Mirar</button>
       <button type="button" class="icon-btn sm" style="border:0" data-cqd="${esc(d.id)}" aria-label="Quitar ${esc(d.nombre)} de la lista">${IC.close}</button>
     </div>`; }).join('') : '<div class="card dash small" style="text-align:center;color:var(--muted)">Aún no hay nada guardado.</div>'}`;
+  };
+
+  /* ---------- Tu semana en 1 minuto ---------- */
+  const SEM = { paso: 0 };
+  const CONSEJOS = [
+    ['Fijo y variable', 'Lo fijo (gimnasio, seguros, suscripciones) no lo decides cada semana. Lo variable (comer fuera, compras, el finde) sí. Ahí está tu margen para ahorrar.'],
+    ['La regla de las 24 horas', 'Si algo no es urgente, guárdalo en tu lista de deseos y míralo mañana. La mitad de las veces ya no te apetece tanto.'],
+    ['A plazos no es gratis', 'Pagar en cuotas no hace la compra más barata: solo reparte el golpe. Cada cuota es un pago fijo más que te come el número del día de los próximos meses.'],
+    ['Págate primero', 'BBVA aparta tu ahorro nada más cobrar. Lo difícil no es apartarlo, es no rescatarlo: cada traspaso de vuelta deshace un poco el trabajo.'],
+    ['El finde sale el lunes', 'Las compras del sábado aparecen en el Excel con fecha del lunes. Brisa usa la fecha valor, la del día en que compraste de verdad.'],
+    ['Los gastos grandes', 'Un gasto de 200 € o más no es tu gasto normal: Brisa lo avisa aparte. Si se repiten, merece la pena tener una meta para ellos.']
+  ];
+  function datosSemana() {
+    const c = ciclo();
+    const fv = (m) => m.fechaValor || m.fecha;
+    const fin = S.movs.reduce((a, m) => (fv(m) > a ? fv(m) : a), S.movs[0].fecha);
+    const ini = masDias(fin, -6), ini0 = masDias(fin, -13), fin0 = masDias(fin, -7);
+    let gasto = 0, gasto0 = 0, rescates = 0; const porCat = {}; const grandes = [];
+    for (const m of S.movs) {
+      const f = fv(m); if (f < ini0 || f > fin) continue;
+      const k = cat(m); const v = variable(m, k);
+      if (f >= ini) {
+        if (k.categoria === 'Rescate del ahorro' && m.importe > 0) rescates += m.importe - (typeof m.saldo === 'number' ? Math.min(m.importe, Math.max(0, m.importe - m.saldo)) : 0);
+        if (v <= 0) continue;
+        if (esGrande(m, k)) { grandes.push(m); continue; }
+        gasto += v;
+        const partes = k.reparto ? k.reparto.filter((p) => !esFijo(m, k, p.categoria)) : [{ categoria: k.categoria, importe: -v }];
+        for (const p of partes) porCat[p.categoria] = (porCat[p.categoria] || 0) - p.importe;
+      } else if (f <= fin0 && v > 0 && !esGrande(m, k)) gasto0 += v;
+    }
+    delete porCat['Por revisar'];
+    const top = Object.entries(porCat).sort((a, b) => b[1] - a[1])[0] || null;
+    const semanal = c.presupuesto * 7 / 30.4;
+    const topes = (S.plan && S.plan.topes) || {};
+    return { c, ini, fin, gasto, gasto0, rescates, grandes, top, semanal, topes };
+  }
+  function tarjetasSemana() {
+    const d = datosSemana(); const c = d.c;
+    const cards = [];
+    const dif = d.gasto - d.gasto0;
+    cards.push({ tag: 'ESTA SEMANA', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Gastaste<br>' + eur(d.gasto),
+      b: (d.gasto0 > 0 ? (Math.abs(dif) < 5 ? 'Casi lo mismo que la semana anterior.' : dif < 0 ? `Son ${eur(-dif)} menos que la semana anterior. Vas en buena dirección.` : `Son ${eur(dif)} más que la semana anterior. Sin drama: miramos dónde.`) : 'Del ' + fmtF(d.ini) + ' al ' + fmtF(d.fin) + ', con la fecha real de cada compra.')
+        + (d.grandes.length ? ` Aparte, ${d.grandes.length === 1 ? 'un gasto grande' : d.grandes.length + ' gastos grandes'}: ${d.grandes.map((m) => esc(nombreMov(m)) + ' (' + eur(-m.importe) + ')').join(', ')}.` : ''),
+      big: d.gasto0 > 0 ? ['La semana anterior', eur(d.gasto0)] : ['Tu ritmo semanal', eur(d.semanal)] });
+    if (d.top) {
+      const [k, v] = d.top;
+      const tope = d.topes[k] ? d.topes[k] * 7 / 30.4 : null;
+      const normal = (c.H.porCat[k] || 0) * 7 / 30.4;
+      const ref = tope || normal;
+      cards.push({ tag: 'DONDE MÁS', bg: 'var(--peach)', tc: 'var(--peach-d)', t: esc(k) + ':<br>' + eur(v),
+        b: !(ref > 0) ? 'Es lo que más se ha llevado esta semana. Cuando tenga más meses tuyos, te diré si es mucho o poco para ti.' : v > ref * 1.1 ? 'Por encima de lo que sueles. Es lo más fácil de ajustar sin notarlo mucho: un poco menos aquí ya se nota.' : 'Dentro de lo normal para ti. Es tu categoría más alta, pero va bien.',
+        big: ref > 0 ? [tope ? 'Tu límite semanal' : 'Tu semana normal', eur(ref)] : null });
+    } else cards.push({ tag: 'DONDE MÁS', bg: 'var(--peach)', tc: 'var(--peach-d)', t: 'Semana<br>tranquila', b: 'No veo gastos del día a día en estos 7 días. ¿Has subido el Excel de la semana?', big: null });
+    const sem = Math.floor((aDate(d.fin) - new Date(2026, 0, 5)) / (7 * 86400000));
+    const [ct, cb] = CONSEJOS[((sem % CONSEJOS.length) + CONSEJOS.length) % CONSEJOS.length];
+    cards.push({ tag: 'APRENDE EN 20 SEGUNDOS', bg: 'var(--butter)', tc: 'var(--butter-d)', t: ct, b: cb, big: null });
+    const meta = ahorro().metas.find((x) => x.ahorrado < x.objetivo);
+    const bigMeta = meta ? [esc(meta.nombre), `${eur(meta.ahorrado)} / ${eur(meta.objetivo)}`] : null;
+    const sobra = d.semanal - d.gasto;
+    if (d.rescates > 0) cards.push({ tag: 'TU SIGUIENTE PASO', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Esta semana<br>rescataste ' + eur(d.rescates),
+      b: 'La semana que viene, intenta dejar el ahorro quieto. Si algo te tienta, pregúntaselo antes a Brisa en «¿Me lo compro?».', big: ['Rescates del mes', `${eur(c.rescates - c.forzados)} / ${eur(S.limiteRescates)}`] });
+    else if (sobra > 5) cards.push({ tag: 'TU SIGUIENTE PASO', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Te sobraron<br>' + eur(sobra),
+      b: 'Si los pasas a tu ahorro en la app de BBVA antes del finde, no se gastan solos. Brisa lo verá en tu próximo Excel.', big: bigMeta });
+    else cards.push({ tag: 'TU SIGUIENTE PASO', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Semana<br>movida',
+      b: `Te pasaste ${eur(-sobra)} de tu ritmo. Ya lo he repartido entre los días que quedan hasta el ${aDate(c.fin).getDate()}.`, big: ['Hoy puedes gastar', eur(c.hoyPuedes)] });
+    return cards;
+  }
+  R.semana = () => {
+    if (!S.movs.length) return R.inicio();
+    const cards = tarjetasSemana();
+    const p = Math.min(SEM.paso, cards.length - 1); const k = cards[p]; const ult = p === cards.length - 1;
+    return `
+    <div class="row" style="margin-bottom:18px"><a class="icon-btn" href="#inicio" aria-label="Cerrar">${IC.close}</a><span class="small muted">Tu semana en 1 minuto</span><span style="width:44px"></span></div>
+    <div style="display:flex;gap:6px;margin-bottom:18px">${cards.map((x, i) => `<i style="flex:1;height:4px;border-radius:2px;background:${i <= p ? 'var(--rose2)' : 'var(--line2)'}"></i>`).join('')}</div>
+    <section class="hero sem-card pop" style="background:${k.bg}">
+      ${orn(38, '#fff', 'top:26px;right:26px', 'tw')}${orn(16, '#fff', 'top:72px;right:70px', 'tw d2')}${heart(16, '#fff', 'bottom:104px;right:30px')}${orn(12, '#fff', 'bottom:130px;right:58px', 'tw d4')}
+      <div class="pix" style="font-size:13px;color:${k.tc};letter-spacing:.5px">${k.tag}</div>
+      <div class="h1" style="font-size:36px;line-height:1.12;letter-spacing:-.8px;padding-right:44px">${k.t}</div>
+      <p style="margin:0;font-size:17px;line-height:1.5;color:#4A2E3C">${k.b}</p>
+      <div style="flex-grow:1"></div>
+      ${k.big ? `<div class="row" style="background:rgba(255,255,255,.72);border-radius:22px;padding:16px 18px"><span class="small" style="color:#4A2E3C">${k.big[0]}</span><span class="num" style="font-size:24px">${k.big[1]}</span></div>` : ''}
+    </section>
+    <div class="btns">${p > 0 ? '<button type="button" class="btn ghost" id="semAtras">Atrás</button>' : ''}<button type="button" class="btn" id="semSig">${ult ? 'Listo' : 'Siguiente'}</button></div>`;
   };
 
   R.finde = () => {
@@ -1448,6 +1532,10 @@
     // ¿Me lo compro?
     const verDeseo = (id) => { const d = S.deseos.find((x) => x.id === id); if (!d) return; Object.assign(CQ, { item: d.nombre, importe: String(d.importe).replace('.', ','), modo: 'once', hecho: null }); };
     $app.querySelectorAll('[data-deseo]').forEach((b) => b.onclick = () => { verDeseo(b.dataset.deseo); location.hash = '#comprar'; });
+    if (r === 'semana') {
+      if (q('#semAtras')) q('#semAtras').onclick = () => { SEM.paso = Math.max(0, SEM.paso - 1); render(); };
+      q('#semSig').onclick = () => { if (SEM.paso >= 3) { SEM.paso = 0; S.semanaVista = hoyIso(); guardar(); location.hash = '#inicio'; } else { SEM.paso++; render(); } };
+    }
     if (r === 'comprar') {
       const res = q('#cqRes');
       const refrescar = () => { res.innerHTML = resultadoCompra(); };
