@@ -61,6 +61,8 @@ Un único objeto JSON, guardado con `guardar()`:
 | `retenido` | `{ importe, fecha, auto? }`: pagos con tarjeta aún no reflejados. Con el banco conectado llega solo. |
 | `reservas` | Compras de «¿Me lo compro?» pendientes de aparecer: `{ id, nombre, importe, fecha }`. |
 | `deseos` | Lista de deseos: `{ id, nombre, importe, creado }`. |
+| `devol` | Devoluciones por Bizum: `idBizum → idGasto`. Ese Bizum se resta del gasto y no cuenta como ingreso. |
+| `devolNo` | Bizum recibidos que la persona dijo que no son devoluciones (`idBizum → true`): no se vuelven a proponer. |
 | `plan` | Topes por categoría aplicados desde Presupuesto. |
 | `banco` | `{ conectado, hasta, ultima, caducada, error, cuentas }` si BBVA está conectado. |
 | `ultimaImportacion` | Resumen del último Excel o sincronización (para la pantalla «Excel leído»). |
@@ -113,6 +115,13 @@ El dinero libre se reparte entre los días hasta el cobro según el **peso de ca
 - Categorías fijas: Deporte, Suscripciones, Seguros, Facturas, Mascotas, Impuestos y comisiones, más lo que las reglas personales marquen como fijo.
 - Cargos que encajan con un pago fijo.
 - **Gastos grandes y puntuales:** 200 € o más, no fijos. Se avisan aparte.
+
+### Devoluciones por Bizum (`sugerenciasDevol()`)
+Cuando pagas tú la cuenta y tus amigas te devuelven su parte por Bizum, el gasto debe contar solo lo tuyo.
+- Un Bizum recibido se propone como devolución de un gasto variable de **hasta 3 días antes** (por fecha o fecha valor) y por **no más del 110 %** de lo que queda de ese gasto.
+- Si hay varios candidatos, gana el más cercano en días; ayudan que el concepto del Bizum se parezca al comercio («boltaso» → Bolt) y que el gasto sea de una categoría social (comer fuera, ocio, transporte…).
+- Si dices que sí, `variable()` resta el Bizum de ese gasto (nunca por debajo de 0), y el Bizum toma la categoría del gasto con `cuentaComoGasto: false`. Así bajan la categoría, el gasto normal, Tu semana y el presupuesto. El número del día no cambia: el saldo real ya incluía el Bizum.
+- A mano: en el detalle de un Bizum recibido, «Es una devolución de…» muestra los gastos de los 10 días anteriores.
 
 ### Rescates
 Traspasos desde el ahorro. Un **rescate forzado** es solo la parte que tapa un saldo negativo: no cuenta en el límite.
@@ -189,6 +198,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.4.8 | 20 oct 2026 | Devoluciones por Bizum: el gasto cuenta solo tu parte. Nombres limpios para lo que llega de BBVA conectado |
 | 0.4.7 | 15 oct 2026 | Si la conexión con BBVA ya existe en la nube, la app la adopta al abrirse |
 | 0.4.6 | 15 oct 2026 | Conexión con BBVA: solo la cuenta principal (la de ahorro no se mezcla con los gastos) |
 | 0.4.5 | 15 oct 2026 | Colores alineados con el manual de marca: la tarjeta del finde en melocotón |

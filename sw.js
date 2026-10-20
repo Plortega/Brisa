@@ -1,6 +1,6 @@
 // Brisa: guarda la app para que abra sin conexión. Sube VERSION al cambiar archivos.
 // Primero intenta la red (así las versiones nuevas llegan al momento) y, sin conexión, usa la caché.
-const VERSION = 'brisa-v0.4.7';
+const VERSION = 'brisa-v0.4.8';
 const ARCHIVOS = ['./', './index.html', './guia.html', './styles.css', './app.js', './categorizador.js', './reglas-iniciales.js', './supabase.js', './nube-config.js',
   './xlsx.core.min.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ARCHIVOS))); self.skipWaiting(); });

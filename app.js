@@ -1,9 +1,9 @@
-/* Brisa · v0.4.7 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.8 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.7';
+  const VERSION_APP = '0.4.8';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -37,6 +37,7 @@
     };
   }
   let S;
+  let DEV = null; // devoluciones por Bizum: idGasto → total devuelto (se rehace al guardar y al pintar)
   try { S = JSON.parse(localStorage.getItem(KEY)) || nuevoEstado(); } catch (e) { S = nuevoEstado(); }
   // Id de un movimiento: BBVA cambia el texto del concepto entre descargas
   // (a veces añade la ciudad), así que usamos fecha, importe y saldo resultante.
@@ -83,6 +84,8 @@
     S.fijos = S.fijos || []; S.fijosEstado = S.fijosEstado || {}; S.fijosIgnorados = S.fijosIgnorados || {};
     // v0.3.2: ¿Me lo compro? — compras reservadas y lista de deseos
     S.reservas = S.reservas || []; S.deseos = S.deseos || [];
+    // v0.4.8: devoluciones por Bizum
+    S.devol = S.devol || {}; S.devolNo = S.devolNo || {};
     S.reglas = S.reglas || { reglasUsuario: {}, palabras: [], importes: [] };
     S.reglas.reglasUsuario = S.reglas.reglasUsuario || {}; S.reglas.palabras = S.reglas.palabras || []; S.reglas.importes = S.reglas.importes || [];
     if (S.perfil && !RITMOS[S.perfil.ritmo]) S.perfil.ritmo = 'equilibrado';
@@ -90,7 +93,7 @@
   migrar();
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
   function guardar() {
-    S.actualizado = Date.now();
+    S.actualizado = Date.now(); DEV = null;
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('No he podido guardar en este móvil.'); }
     subirPronto();
   }
@@ -119,7 +122,7 @@
       if (error) throw error;
       const remota = data ? Date.parse(data.actualizado) : 0;
       if (data && remota > (S.actualizado || 0) + 1000) {
-        S = data.datos; migrar(); S.actualizado = remota;
+        S = data.datos; migrar(); DEV = null; S.actualizado = remota;
         try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
         nube.ultima = Date.now(); render(); toast('Datos al día desde la nube');
       } else if (S.perfil && (!data || (S.actualizado || 0) > remota + 1000)) await subir();
@@ -323,6 +326,7 @@
     sun: ic2('M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z', '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>'),
     alert: ic2('M12 3.5 21 19.5H3z', '<path d="M12 3.5 21 19.5H3z"/><path d="M12 10v4.5"/><circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/>'),
     bag: ic2('M5 8h14l-1.2 10.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z', '<path d="M5 8h14l-1.2 10.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>'),
+    split: ic2('M18.5 14a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0z', '<circle cx="14" cy="14" r="4.5"/><path d="M14 12v4"/><path d="M8 3.5 4.5 7 8 10.5"/><path d="M4.5 7h6.5a5 5 0 0 1 4.3 2.5"/>'),
     plus: '<svg viewBox="0 0 24 24" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>',
     close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>'
   };
@@ -336,6 +340,12 @@
 
   /* ---------- Categorías ---------- */
   function cat(m) {
+    // Un Bizum que es la devolución de un gasto va con ese gasto y no cuenta como ingreso
+    const gid = S.devol && S.devol[m.id];
+    if (gid) {
+      const g = S.movs.find((x) => x.id === gid);
+      if (g) return { categoria: cat(g).categoria, confianza: 1, motivo: 'Te devolvieron parte de ' + nombreMov(g), cuentaComoGasto: false, devolucion: g.id };
+    }
     const c = B.categorizar(m, S.reglas);
     if (S.overrides[m.id]) return { ...c, categoria: S.overrides[m.id], confianza: 1, motivo: 'Lo cambiaste tú', reparto: undefined,
       cuentaComoGasto: !['Ingresos', 'Ahorro', 'Rescate del ahorro'].includes(S.overrides[m.id]) && m.importe < 0 };
@@ -346,17 +356,78 @@
     if (regla && typeof regla === 'object' && regla.terminado) return true;
     return FIJAS.has(categoria) || (c.motivo === 'Psicóloga' && categoria === 'Salud');
   }
-  // Gasto variable (el que resta del día a día) de un movimiento
-  function variable(m, c) {
+  // Gasto variable (el que resta del día a día) de un movimiento, antes de devoluciones
+  function variableBase(m, c) {
     if (!c.cuentaComoGasto || deFijo(m)) return 0;
     if (c.reparto) return c.reparto.filter((p) => !esFijo(m, c, p.categoria)).reduce((a, p) => a - p.importe, 0);
     return esFijo(m, c, c.categoria) ? 0 : -m.importe;
   }
+  // …y lo que de verdad pagaste tú: menos lo que te devolvieron por Bizum
+  function variable(m, c) {
+    const v = variableBase(m, c);
+    return v > 0 ? Math.max(0, Math.round((v - devueltoDe(m.id)) * 100) / 100) : v;
+  }
+
+  /* ---------- Devoluciones por Bizum (v0.4.8) ---------- */
+  // S.devol[idBizum] = idGasto · S.devolNo[idBizum] = true si no es una devolución
+  const esBizumRecibido = (m) => m.importe > 0 && /^bizum/i.test(String(m.concepto || '').trim());
+  function conceptoBizum(m) {
+    const t = /recibido:\s*(.*)$/i.exec(m.concepto || '') || /recibido:\s*(.*)$/i.exec(m.tipo || '');
+    const s = t ? t[1].trim() : '';
+    return /^sin concepto$/i.test(s) ? '' : s;
+  }
+  function devueltoDe(id) {
+    if (!DEV) {
+      DEV = {}; const porId = new Map(S.movs.map((m) => [m.id, m]));
+      for (const [b, g] of Object.entries(S.devol || {})) { const mb = porId.get(b); if (mb && porId.has(g)) DEV[g] = (DEV[g] || 0) + mb.importe; }
+    }
+    return DEV[id] || 0;
+  }
+  const SOCIALES = new Set(['Comer fuera', 'Ocio y planes', 'Transporte', 'Supermercado', 'Viajes', 'Regalos', 'Compras', 'Coche y gasolina']);
+  const palabras = (s) => B.limpiar(s || '').split(/[^a-zñ0-9]+/).filter((w) => w.length >= 4 && !/^(concepto|bizum|recibido|gracias)$/.test(w));
+  // Gastos de los que puede venir un Bizum: hasta 3 días antes, y que no le hayan devuelto ya todo
+  function candidatosDevol(b, usado, manual) {
+    const pb = palabras(conceptoBizum(b));
+    const out = [];
+    for (const g of S.movs) {
+      if (g.importe >= 0) continue;
+      const ds = [g.fecha, g.fechaValor].filter(Boolean).map((f) => dias(f, b.fecha));
+      const d = Math.min(...ds.map((x) => (x >= (manual ? -1 : 0) ? Math.abs(x) : 99)));
+      if (d > (manual ? 10 : 3)) continue;
+      const c = cat(g); const base = variableBase(g, c);
+      if (base <= 0) continue;
+      const resto = Math.round((base - devueltoDe(g.id) - ((usado || {})[g.id] || 0)) * 100) / 100;
+      if (!manual && (resto <= 0 || b.importe > resto * 1.1 + 0.01)) continue;
+      const nom = B.limpiar(nombreMov(g) + ' ' + g.concepto);
+      const coincide = pb.some((w) => nom.includes(w.slice(0, 4)));
+      out.push({ g, c, resto, d, score: d * 10 - (coincide ? 15 : 0) + (SOCIALES.has(c.categoria) ? 0 : 6) + (b.importe > resto ? 2 : 0) });
+    }
+    return manual ? out.sort((a, z) => z.g.fecha.localeCompare(a.g.fecha) || a.score - z.score) : out.sort((a, z) => a.score - z.score);
+  }
+  // Bizum recibidos que parecen devoluciones, cada uno con su gasto más probable
+  function sugerenciasDevol() {
+    const usado = {}; const out = [];
+    const bs = S.movs.filter((m) => esBizumRecibido(m) && !(S.devol || {})[m.id] && !(S.devolNo || {})[m.id])
+      .sort((a, z) => a.fecha.localeCompare(z.fecha));
+    for (const b of bs) {
+      const k = candidatosDevol(b, usado)[0]; if (!k) continue;
+      usado[k.g.id] = (usado[k.g.id] || 0) + b.importe;
+      out.push({ b, g: k.g, c: k.c });
+    }
+    return out.reverse(); // lo más reciente primero
+  }
+  function enlazarDevol(b, g) { S.devol[b.id] = g.id; delete S.devolNo[b.id]; guardar(); }
   const esGrande = (m, c) => c.cuentaComoGasto && -m.importe >= GRANDE && !deFijo(m) && variable(m, c) > 0;
   function nombreMov(m) {
-    if (/^bizum/i.test(m.concepto)) return 'Bizum · ' + m.tipo.replace(/^(enviado|recibido):\s*/i, '');
+    // Lo que llega de BBVA conectado viene como «TIPO // SUBTIPO // COMERCIO»: el nombre es la última parte
+    const partes = String(m.concepto || '').split(' // ');
+    const ult = partes.length > 2 ? partes[partes.length - 1] : '';
+    if (/^bizum/i.test(m.concepto)) {
+      const t = (ult || m.tipo || '').replace(/^(enviado|recibido):\s*/i, '');
+      return 'Bizum · ' + (/^\**$/.test(t.trim()) ? '' : t);
+    }
     if (/^(transferencia|traspaso|adeudo|abono)/i.test(m.concepto) && m.tipo && !/^otros$/i.test(m.tipo)) return m.tipo;
-    const l = B.limpiar(m.concepto) || m.concepto;
+    const l = B.limpiar(ult || m.concepto) || ult || m.concepto;
     return l.charAt(0).toUpperCase() + l.slice(1);
   }
 
@@ -947,13 +1018,14 @@
     for (const [m, c] of cs) {
       if (c.categoria === 'Rescate del ahorro') resc += m.importe;
       if (c.categoria === 'Ahorro') apart += Math.abs(m.importe);
+      if (c.devolucion) porCat[c.categoria] = (porCat[c.categoria] || 0) - m.importe;
       if (c.cuentaComoGasto) {
         const partes = c.reparto || [{ categoria: c.categoria, importe: m.importe }];
         for (const p of partes) porCat[p.categoria] = (porCat[p.categoria] || 0) - p.importe;
       }
     }
     delete porCat['Por revisar'];
-    const top = Object.entries(porCat).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const top = Object.entries(porCat).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 5);
     const max = top.length ? top[0][1] : 1;
     const sug = sugerirFijos();
     return `
@@ -982,6 +1054,15 @@
     </div>
     <div class="btns">${rev ? '<a class="btn ghost" href="#movimientos">Revisar ' + rev + '</a>' : ''}<a class="btn" href="#inicio">Ir a Inicio</a></div>`;
   };
+
+  function tarjetaDevol() {
+    const s = sugerenciasDevol(); if (!s.length) return '';
+    const p = s[0]; const con = conceptoBizum(p.b);
+    return linkCard({ attrs: 'id="bDevol"', style: 'background:var(--sky)', icStyle: 'color:var(--sky-d)', icon: IC.split,
+      titulo: s.length === 1 ? `¿Te devolvieron ${eur(p.b.importe, true)} de ${esc(nombreMov(p.g))}?` : `${s.length} Bizum parecen devoluciones`,
+      sub: s.length === 1 ? `Bizum ${con ? '«' + esc(con) + '»' : 'sin concepto'} · un toque y cuento solo tu parte` : 'Te devolvieron parte de algún gasto · un toque y cuento solo tu parte',
+      subStyle: 'color:var(--sky-d)' });
+  }
 
   // Corazones: cuánto de tu dinero del día a día del mes te queda (10 = el mes entero)
   function corazonesN(c) {
@@ -1033,6 +1114,7 @@
       : linkCard({ attrs: 'id="bSubirHome"', style: viejo ? 'background:var(--sky)' : 'background:#fff;border:1px solid var(--line)', icStyle: (viejo ? '' : 'background:var(--sky);') + 'color:var(--sky-d)', icon: IC.file, titulo: viejo ? 'Toca subir el Excel' : 'Subir el Excel de la semana', sub: 'Datos hasta el ' + fmtF(ultimo) })}
     ${linkCard({ href: '#metas', style: 'background:#fff;border:1.5px dashed #F0C3D5', icStyle: 'background:var(--rose);color:var(--berry)', icon: IC.uturn, titulo: `Rescates: ${eur(c.rescates - c.forzados)} de ${eur(S.limiteRescates)}`, sub: c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : 'Lo que ha vuelto de tu ahorro este mes' })}
     ${plz.length > 1 ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.card, titulo: `${plz.length} cargos de pago a plazos`, sub: [...new Set(plz.map((p) => p.prov))].join(', ') + ' · ¿cuántas cuotas quedan?', subStyle: 'color:var(--butter-d)' }) : tarjetaPlazos(plz)}
+    ${tarjetaDevol()}
     ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:#5A4238' }) : ''}
     ${linkCard({ href: '#semana', style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.cal, titulo: 'Tu semana en 1 minuto', sub: (!S.semanaVista || dias(S.semanaVista, hoyIso()) >= 6) ? '4 tarjetas. Sin Excel, sin cuentas.' : 'Ya la has visto esta semana', subStyle: 'color:#3B4A43' })}`;
   };
@@ -1208,12 +1290,13 @@
       const c = cat(m);
       return `<button class="mov" data-mov="${esc(m.id)}">
         <span class="av" style="background:${COLORES[c.categoria] || '#fff'};${c.categoria === 'Por revisar' ? 'border:1.5px dashed var(--rose3)' : ''}">${esc(nombreMov(m).charAt(0).toUpperCase())}</span>
-        <span class="t"><span class="n">${esc(nombreMov(m))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || '#fff'}">${esc(c.categoria)}</span> ${fmtF(m.fecha)}${c.aplazado ? ' · aplazado' : ''}</span></span>
+        <span class="t"><span class="n">${esc(nombreMov(m))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || '#fff'}">${esc(c.categoria)}</span> ${fmtF(m.fecha)}${c.aplazado ? ' · aplazado' : ''}${c.devolucion ? ' · devolución' : ''}${devueltoDe(m.id) ? (-m.importe - devueltoDe(m.id) > 0.004 ? ' · tu parte ' + eur(-m.importe - devueltoDe(m.id), true) : ' · te salió gratis') : ''}</span></span>
         <span class="amt ${m.importe > 0 ? 'pos' : ''}">${m.importe > 0 ? '+' : ''}${eur(m.importe, true)}</span></button>`;
     };
     return `
     <div class="top"><div><h1>Movimientos${SPARK}</h1><div class="small muted">Del Excel que subiste. Tú solo confirmas lo dudoso.</div></div></div>
     ${S.movs.length ? `<div class="card" style="background:var(--mint);border:0;display:flex;gap:12px;align-items:center"><span style="color:var(--mint-d);width:22px;height:22px;display:inline-flex">${IC.spark}</span><span><b>${S.movs.length - rev.length} de ${S.movs.length}</b> ordenados solos${rev.length ? '<br><span class="small">' + rev.length + ' necesitan un vistazo</span>' : ''}</span></div>` : ''}
+    ${tarjetaDevol()}
     ${rev.length ? `<div class="h2">Por revisar</div><div class="card" style="padding:4px 16px">${rev.slice(0, 15).map(fila).join('')}</div>` : ''}
     <div class="h2">Todos</div>
     ${S.movs.length ? `<div class="card" style="padding:4px 16px">${lista.map(fila).join('')}</div>` : '<div class="empty">Aún no hay movimientos. <a href="#subir">Sube tu Excel</a>.</div>'}
@@ -1464,10 +1547,30 @@
     const m = S.movs.find((x) => x.id === id); if (!m) return;
     const c = cat(m);
     let elegida = c.categoria === 'Por revisar' ? null : c.categoria;
+    const dev = devueltoDe(m.id);
+    if (c.devolucion) {
+      // Bizum ya enlazado: se ve de qué gasto es y se puede deshacer
+      const g = S.movs.find((x) => x.id === c.devolucion);
+      $sheet.innerHTML = `
+        <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">${esc(nombreMov(m))}</div><div class="small muted">${fmtF(m.fecha)} · +${eur(m.importe, true)} · devolución</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
+        <div class="card dash" style="margin:14px 0;padding:4px 16px">${filaDv(g, esc(cat(g).categoria))}
+          <div class="row small" style="min-height:44px"><span>Te devolvieron ${eur(devueltoDe(g.id), true)}</span><span>${tuParte(g)}</span></div></div>
+        <p class="small" style="line-height:1.5;margin:0 0 14px">No cuenta como ingreso: lo resto de ese gasto para que «${esc(cat(g).categoria)}» cuente solo lo que pagaste tú.</p>
+        <button class="btn ghost" id="sElegir">Es de otro gasto</button>
+        <p style="text-align:center;margin:14px 0 0" class="small"><a href="#movimientos" id="sDeshacer">No es una devolución</a></p>`;
+      $sheet.onclick = (e) => {
+        if (e.target.closest('#sCerrar') || e.target === $sheet) { $sheet.close(); return; }
+        if (e.target.closest('#sElegir')) { elegirGasto(m); return; }
+        if (e.target.closest('#sDeshacer')) { e.preventDefault(); delete S.devol[m.id]; S.devolNo[m.id] = true; guardar(); $sheet.close(); render(); toast('Vuelve a contar como ingreso'); }
+      };
+      $sheet.showModal(); return;
+    }
     const dibujar = () => {
       $sheet.innerHTML = `
         <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">${esc(nombreMov(m))}</div><div class="small muted">${fmtF(m.fecha)} · ${eur(m.importe, true)}</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
         ${c.motivo ? `<p class="xs muted" style="margin:8px 0 0">${esc(c.motivo)}</p>` : ''}
+        ${dev ? `<div class="card" style="background:var(--sky);border:0;margin:12px 0 0;padding:10px 16px;color:var(--sky-d)"><div class="row small"><span>Te devolvieron ${eur(dev, true)} por Bizum</span><span>${tuParte(m)}</span></div></div>` : ''}
+        ${esBizumRecibido(m) ? `<button class="btn ghost" id="sEsDevol" style="margin-top:12px">${IC.split.replace('<svg', '<svg width="18" height="18" style="vertical-align:-4px;margin-right:6px;color:var(--sky-d)"')}Es una devolución de…</button>` : ''}
         <div class="cats">${ELEGIBLES.map((k) => `<button data-cat="${esc(k)}" aria-pressed="${elegida === k}"><span class="dot" style="background:${COLORES[k]};border:1px solid #E8D5DC"></span>${esc(k)}</button>`).join('')}</div>
         <label class="check"><input type="checkbox" id="sRecordar" checked> Recordarlo para los parecidos</label>
         <button class="btn" id="sGuardar" ${elegida ? '' : 'disabled style="opacity:.5"'}>Guardar</button>`;
@@ -1477,6 +1580,7 @@
       const b = e.target.closest('[data-cat]');
       if (b) { elegida = b.dataset.cat; const r = $sheet.querySelector('#sRecordar').checked; dibujar(); $sheet.querySelector('#sRecordar').checked = r; return; }
       if (e.target.closest('#sCerrar') || e.target === $sheet) { $sheet.close(); return; }
+      if (e.target.closest('#sEsDevol')) { elegirGasto(m); return; }
       if (e.target.closest('#sGuardar') && elegida) {
         if ($sheet.querySelector('#sRecordar').checked) {
           const k = B.claveRegla(m); const prev = S.reglas.reglasUsuario[k];
@@ -1487,6 +1591,61 @@
       }
     };
     $sheet.showModal();
+  }
+
+  /* ---------- Hojas de devoluciones por Bizum ---------- */
+  const filaDv = (m, extra) => `<div class="mov" style="cursor:default">
+      <span class="av" style="background:${m.importe > 0 ? 'var(--sky)' : COLORES[cat(m).categoria] || '#fff'};color:${m.importe > 0 ? 'var(--sky-d)' : 'inherit'}">${m.importe > 0 ? IC.split.replace('<svg', '<svg width="20" height="20"') : esc(nombreMov(m).charAt(0).toUpperCase())}</span>
+      <span class="t"><span class="n">${m.importe > 0 ? 'Bizum ' + (conceptoBizum(m) ? '«' + esc(conceptoBizum(m)) + '»' : 'sin concepto') : esc(nombreMov(m))}</span><span class="xs muted">${fmtF(m.fecha)}${extra ? ' · ' + extra : ''}</span></span>
+      <span class="amt ${m.importe > 0 ? 'pos' : ''}">${m.importe > 0 ? '+' : ''}${eur(m.importe, true)}</span></div>`;
+  function tuParte(g, b) {
+    const queda = Math.round((variableBase(g, cat(g)) - devueltoDe(g.id) - (b ? b.importe : 0)) * 100) / 100;
+    return queda <= 0 ? '<b>Te salió gratis</b>' : `Tu parte: <b>${eur(queda, true)}</b>`;
+  }
+  // Una sugerencia tras otra: sí / es de otro gasto / no es una devolución
+  function abrirDevol() {
+    let hechas = 0;
+    const siguiente = () => {
+      const s = sugerenciasDevol();
+      if (!s.length) { $sheet.close(); render(); if (hechas) toast('Listo: tus gastos cuentan solo tu parte'); return; }
+      const { b, g, c } = s[0];
+      $sheet.innerHTML = `
+        <div class="row" style="align-items:flex-start"><div><div class="pix" style="font-size:12px;color:var(--sky-d);letter-spacing:.5px">DEVOLUCIÓN${s.length > 1 ? ' · QUEDAN ' + s.length : ''}</div><div class="num" style="font-size:20px;margin-top:4px">¿Te devolvieron parte de esto?</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
+        <div class="card dash" style="margin:14px 0;padding:4px 16px">
+          ${filaDv(g, esc(c.categoria))}
+          ${filaDv(b, 'te lo enviaron')}
+          <div class="row small" style="min-height:44px;color:var(--ink)"><span>Si dices que sí</span><span>${tuParte(g, b)}</span></div>
+        </div>
+        <button class="btn" id="dvSi">Sí, es de esto</button>
+        <div class="btns" style="margin-top:10px"><button class="btn ghost" id="dvOtro">Es de otro gasto</button></div>
+        <p style="text-align:center;margin:14px 0 2px" class="small"><a href="#movimientos" id="dvNo">No es una devolución</a></p>
+        <p class="xs muted" style="text-align:center;margin:0">Así «${esc(c.categoria)}» y tu gasto normal cuentan lo que pagaste tú.</p>`;
+      $sheet.querySelector('#dvSi').onclick = () => { enlazarDevol(b, g); hechas++; siguiente(); };
+      $sheet.querySelector('#dvOtro').onclick = () => elegirGasto(b, () => { hechas++; siguiente(); });
+      $sheet.querySelector('#dvNo').onclick = (e) => { e.preventDefault(); S.devolNo[b.id] = true; guardar(); siguiente(); };
+    };
+    $sheet.onclick = (e) => { if (e.target.closest('#sCerrar') || e.target === $sheet) { $sheet.close(); render(); } };
+    if (!sugerenciasDevol().length) return;
+    siguiente();
+    if (!$sheet.open) $sheet.showModal();
+  }
+  // Elegir a mano de qué gasto es un Bizum (los de los 10 días anteriores)
+  function elegirGasto(b, alAcabar) {
+    const lista = candidatosDevol(b, null, true).slice(0, 25);
+    $sheet.innerHTML = `
+      <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">¿De qué gasto es?</div><div class="small muted">Bizum ${conceptoBizum(b) ? '«' + esc(conceptoBizum(b)) + '»' : 'sin concepto'} · +${eur(b.importe, true)} · ${fmtF(b.fecha)}</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
+      ${lista.length ? `<div class="card" style="padding:4px 16px;margin-top:14px">${lista.map(({ g, c }) => `<button class="mov" data-g="${esc(g.id)}">
+        <span class="av" style="background:${COLORES[c.categoria] || '#fff'}">${esc(nombreMov(g).charAt(0).toUpperCase())}</span>
+        <span class="t"><span class="n">${esc(nombreMov(g))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || '#fff'}">${esc(c.categoria)}</span> ${fmtF(g.fecha)}${devueltoDe(g.id) ? ' · ya te devolvieron ' + eur(devueltoDe(g.id), true) : ''}</span></span>
+        <span class="amt">${eur(g.importe, true)}</span></button>`).join('')}</div>`
+      : '<p class="small muted" style="margin:16px 0">No veo gastos tuyos en los 10 días anteriores.</p>'}
+      <p class="xs muted" style="text-align:center;margin:10px 0 0">Del gasto que elijas resto ${eur(b.importe, true)}: cuenta solo tu parte.</p>`;
+    $sheet.querySelectorAll('[data-g]').forEach((x) => x.onclick = () => {
+      const g = S.movs.find((m) => m.id === x.dataset.g); if (!g) return;
+      enlazarDevol(b, g); toast('Restado de ' + nombreMov(g));
+      if (alAcabar) alAcabar(); else { $sheet.close(); render(); }
+    });
+    if (!$sheet.open) $sheet.showModal();
   }
 
   // Hoja de un pago fijo: marcar este cargo, editar, ver cuotas o quitarlo
@@ -1767,6 +1926,7 @@
     return r;
   }
   function render() {
+    DEV = null;
     const r = ruta();
     $app.innerHTML = R[r]();
     const conNav = ['inicio', 'movimientos', 'presupuesto', 'metas'].includes(r);
@@ -1791,6 +1951,7 @@
     }
     ['#bSubir', '#bSubirHome', '#bSubirAj'].forEach((s) => { if (q(s)) q(s).onclick = abrirSelector; });
     $app.querySelectorAll('[data-mov]').forEach((b) => b.onclick = () => abrirMov(b.dataset.mov));
+    if (q('#bDevol')) q('#bDevol').onclick = () => abrirDevol();
     if (q('#bMas')) q('#bMas').onclick = () => { verTodos += 60; render(); };
     $app.querySelectorAll('[data-ritmo2]').forEach((b) => b.onclick = () => { S.perfil.ritmo = b.dataset.ritmo2; guardar(); render(); });
     if (q('#bAplicar')) q('#bAplicar').onclick = aplicarPresupuesto;
