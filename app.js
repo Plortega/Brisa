@@ -1,9 +1,9 @@
-/* Brisa · v0.6.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.6.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.6.0';
+  const VERSION_APP = '0.6.1';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -19,7 +19,7 @@
     'Regalos': '#FADCE8', 'Efectivo': '#F0E6E9', 'Seguros': '#EBDFFB', 'Impuestos y comisiones': '#F0E6E9',
     'Otra cuenta': '#F0E6E9', 'Por revisar': '#FFFFFF'
   };
-  const BARRAS = ['#E27FA8', '#93C0E6', '#E9A184', '#6FBF98', '#DDC064', '#A99BE8'];
+  const BARRAS = ['#E27FA8', '#93C0E6', '#E9A184', 'var(--mint-b)', '#DDC064', '#A99BE8'];
   const ELEGIBLES = B.CATEGORIAS.filter((c) => !['Por revisar'].includes(c));
 
   /* ---------- Estado ---------- */
@@ -1668,7 +1668,7 @@
     <div class="h2">¿A qué ritmo ahorras?</div>
     <div class="seg" role="group" aria-label="Ritmo de ahorro">${ritmoBotones(P.ritmo, 'data-ritmo2')}</div>
     <section class="card" style="display:flex;flex-direction:column;gap:12px;border-radius:28px;padding:18px 20px">
-      <div style="display:flex;gap:4px;height:14px"><i style="width:${w(P.fijos)};background:#E8A6BB;border-radius:7px"></i><i style="width:${w(P.diaADia)};background:#93C0E6;border-radius:7px"></i><i style="width:${w(P.paraTi)};background:#8FCFB0;border-radius:7px"></i></div>
+      <div style="display:flex;gap:4px;height:14px"><i style="width:${w(P.fijos)};background:#E8A6BB;border-radius:7px"></i><i style="width:${w(P.diaADia)};background:#93C0E6;border-radius:7px"></i><i style="width:${w(P.paraTi)};background:var(--mint-b);border-radius:7px"></i></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" class="xs muted">
         <div>Lo fijo<br><span class="num" style="font-size:16px;color:var(--ink)">${eur(P.fijos)}</span></div>
         <div>Día a día<br><span class="num" style="font-size:16px;color:var(--ink)">${eur(P.diaADia)}</span></div>
@@ -1753,7 +1753,7 @@
       return `<section class="hero" style="background:${es ? 'var(--mint)' : 'var(--card)'};display:flex;gap:16px;align-items:center;padding:20px;${es ? '' : 'outline:0;border:1px solid var(--line)'}">
         ${es ? orn(14, '#fff', 'bottom:16px;right:22px') : ''}
         <div style="position:relative;width:96px;height:96px;flex-shrink:0">
-          <svg width="96" height="96" viewBox="0 0 104 104" role="img" aria-label="${pc} % completado"><circle cx="52" cy="52" r="44" stroke="rgba(255,255,255,.8)" stroke-width="10"/>${pc > 0 ? `<circle cx="52" cy="52" r="44" stroke="#6FBF98" stroke-width="10" stroke-dasharray="${dash} 277" transform="rotate(-90 52 52)"/>` : ''}</svg>
+          <svg width="96" height="96" viewBox="0 0 104 104" role="img" aria-label="${pc} % completado"><circle cx="52" cy="52" r="44" style="stroke:var(--wash)" stroke-width="10"/>${pc > 0 ? `<circle cx="52" cy="52" r="44" style="stroke:var(--mint-b)" stroke-width="10" stroke-dasharray="${dash} 277" transform="rotate(-90 52 52)"/>` : ''}</svg>
           <span class="num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px">${pc}%</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:5px;flex-grow:1">

@@ -198,6 +198,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.6.1 | 27 oct 2026 | Modo oscuro: lo que va bien pasa de verde menta a champán dorado, que combina con el rosa. En claro sigue verde |
 | 0.6.0 | 27 oct 2026 | Modo oscuro rosado. Ajustes › Apariencia: Automático (como el móvil), Claro u Oscuro. Los colores pasan a ser variables del tema |
 | 0.5.2 | 27 oct 2026 | Un presupuesto aplicado empieza con la siguiente nómina (si lo aplicas en los 3 primeros días del ciclo, empieza ya). Hasta entonces el mes en curso se compara con lo típico o con el presupuesto anterior |
 | 0.5.1 | 27 oct 2026 | Arreglo: el botón «Sí, fue puntual» salía sin texto (azul sobre azul) |

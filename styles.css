@@ -201,9 +201,9 @@ div.aj-row{cursor:default}
   color-scheme:dark;
   --bg:#2B1623; --dots:#4A2639; --ink:#FCEEF4; --muted:#DDB3C7; --line:#5A2F48; --line2:#6B3956;
   --berry:#D25A93; --berry-d:#FFB3D2; --rose:#5C2643; --rose2:#F08DB8; --rose3:#8A4469;
-  --mint:#24403A; --mint-d:#9EE2C2; --mint-b:#6FBF98; --peach:#53302A; --peach-d:#F7BFA3;
+  --mint:#4A3528; --mint-d:#F3D7A4; --mint-b:#E3B877; --peach:#53302A; --peach-d:#F7BFA3;
   --butter:#4A3F24; --butter-d:#EBD58F; --sky:#253A50; --sky-d:#A8CCEE; --lilac:#3E2B52; --lilac-d:#D9C2F5;
-  --card:#3B1D2F; --hero:#7A2F57; --t-hero:#FBDCE8; --t-hero2:#FBDCE8; --t-peach:#F7BFA3; --t-mint:#9EE2C2; --t-mint2:#CFF3E2;
+  --card:#3B1D2F; --hero:#7A2F57; --t-hero:#FBDCE8; --t-hero2:#FBDCE8; --t-peach:#F7BFA3; --t-mint:#F3D7A4; --t-mint2:#FBEBD0;
   --wash:rgba(255,255,255,.1); --dash:#8A4469; --pill:#5C2643; --bar-l:#4A2639; --butter-l:#3A3122; --lilac-ic:#D9C2F5;
   --av-bg:#53302A; --av-bd:#8A5544; --pt-bg:#253A50; --pt-bd:#3E5F80; --ex-bg:#3E2B52; --ex-bd:#5E4880;
 }
