@@ -198,6 +198,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.4.10 | 27 oct 2026 | Actualizar con BBVA se ve: la tarjeta de Inicio pasa a «Actualizando…», luego «¡Listo! N movimientos nuevos» (verde) o el error en melocotón con «toca para reintentar» |
 | 0.4.9 | 27 oct 2026 | Brisa te recomienda: consejos automáticos en el móvil (ritmo del mes, categorías, subidas de precio, membresías que no usas, rescates, «te han vuelto a cobrar») y «¿Y si…?» para probar un gasto nuevo mes a mes |
 | 0.4.8 | 20 oct 2026 | Devoluciones por Bizum: el gasto cuenta solo tu parte. Nombres limpios para lo que llega de BBVA conectado |
 | 0.4.7 | 15 oct 2026 | Si la conexión con BBVA ya existe en la nube, la app la adopta al abrirse |

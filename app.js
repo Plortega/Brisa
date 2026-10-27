@@ -1,9 +1,9 @@
-/* Brisa · v0.4.9 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.10 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.9';
+  const VERSION_APP = '0.4.10';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -184,17 +184,28 @@
     S.reservas = reservasActivas();
     return nuevos.length;
   }
+  // banco.resultado: lo que pasó la última vez que tocaste «Actualizar» (se ve en la tarjeta de Inicio)
   async function sincronizarBanco(aviso) {
-    if (!NUBE || !nube.email || !S.banco || !S.banco.conectado || banco.ocupado) return;
-    banco.ocupado = true; if (aviso) toast('Mirando BBVA…');
+    if (banco.ocupado) return;
+    if (!NUBE || !nube.email) { if (aviso) toast('Entra en tu cuenta (Ajustes › Tu cuenta) para traer los movimientos', 4000); return; }
+    if (!S.banco || !S.banco.conectado) return;
+    banco.ocupado = true; banco.resultado = null; if (aviso) render();
     try {
       const r = await llamarBanco('sincronizar');
-      if (r.caducada) { S.banco.caducada = true; guardar(); render(); return; }
+      if (r.caducada) {
+        S.banco.caducada = true; banco.resultado = { error: true, txt: 'El permiso con BBVA ha caducado' };
+        banco.ocupado = false; guardar(); render(); if (aviso) toast('El permiso con BBVA ha caducado: renuévalo', 4000); return;
+      }
       const n = incorporarBanco(r);
       S.banco.ultima = Date.now(); S.banco.caducada = false; S.banco.error = null;
-      guardar(); render();
-      if (n || aviso) toast(n ? `${n} ${n === 1 ? 'movimiento nuevo' : 'movimientos nuevos'} de BBVA` : 'BBVA al día');
-    } catch (e) { console.error(e); S.banco.error = e.message; guardar(); if (aviso) toast('No he podido hablar con BBVA'); render(); }
+      banco.resultado = { ok: true, n, t: Date.now() };
+      banco.ocupado = false; guardar(); render();
+      if (n || aviso) toast(n ? `✓ ${n} ${n === 1 ? 'movimiento nuevo' : 'movimientos nuevos'} de BBVA` : '✓ Todo al día: no hay movimientos nuevos', 4000);
+    } catch (e) {
+      console.error(e); S.banco.error = e.message; banco.resultado = { error: true, txt: 'No he podido hablar con BBVA' };
+      banco.ocupado = false; guardar(); render();
+      if (aviso) toast('No he podido hablar con BBVA. Prueba en un rato', 4000);
+    }
     banco.ocupado = false;
   }
   // Vuelta desde BBVA: ?code=…&state=… en la dirección
@@ -332,9 +343,10 @@
     plus: '<svg viewBox="0 0 24 24" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>',
     close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>'
   };
-  function toast(msg) {
+  function toast(msg, ms) {
+    document.querySelectorAll('.toast').forEach((x) => x.remove());
     const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
-    document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+    document.body.appendChild(t); setTimeout(() => t.remove(), ms || 2600);
   }
   const linkCard = (o) => `<${o.href ? 'a href="' + o.href + '"' : 'button type="button"'} class="link-card" ${o.attrs || ''} style="${o.style || ''}">
     <span class="ic" style="${o.icStyle || ''}">${o.icon}</span>
@@ -1066,6 +1078,18 @@
       subStyle: 'color:var(--sky-d)' });
   }
 
+  // Tarjeta de BBVA en Inicio: cambia mientras actualiza y dice cómo fue
+  function tarjetaSync() {
+    const R = banco.resultado; const reciente = R && R.ok && Date.now() - R.t < 60000;
+    if (banco.ocupado) return linkCard({ attrs: 'id="bSyncBanco" aria-busy="true"', style: 'background:#fff;border:1px solid var(--line)', icStyle: 'background:var(--sky);color:var(--sky-d)',
+      icon: IC.repeat.replace('<svg', '<svg class="spin"'), titulo: 'Actualizando con BBVA…', sub: 'Un momento, estoy trayendo tus movimientos' });
+    if (R && R.error || (!R && S.banco.error)) return linkCard({ attrs: 'id="bSyncBanco"', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert,
+      titulo: R ? R.txt : 'El último intento con BBVA falló', sub: (S.banco.ultima ? 'Datos de ' + haceCuanto(S.banco.ultima) : 'Aún sin traer') + ' · toca para reintentar', subStyle: 'color:#5A4238' });
+    if (reciente) return linkCard({ attrs: 'id="bSyncBanco"', style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: ic2('M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0z', '<circle cx="12" cy="12" r="8"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/>'),
+      titulo: R.n ? `¡Listo! ${R.n} ${R.n === 1 ? 'movimiento nuevo' : 'movimientos nuevos'}` : '¡Listo! Ya estaba todo al día', sub: 'Actualizado ahora mismo con BBVA', subStyle: 'color:var(--mint-d)' });
+    return linkCard({ attrs: 'id="bSyncBanco"', style: 'background:#fff;border:1px solid var(--line)', icStyle: 'background:var(--sky);color:var(--sky-d)', icon: IC.repeat,
+      titulo: 'Movimientos de BBVA al día', sub: (S.banco.ultima ? 'Última vez ' + haceCuanto(S.banco.ultima) : 'Aún sin traer') + ' · toca para actualizar' });
+  }
   // Corazones: cuánto de tu dinero del día a día del mes te queda (10 = el mes entero)
   function corazonesN(c) {
     const base = Math.max(1, c.presupuesto);
@@ -1113,7 +1137,7 @@
     ${S.retenido && S.retenido.importe > 0 && S.ultimaImportacion && S.retenido.fecha < S.ultimaImportacion.cuando ? linkCard({ href: '#fijos', style: 'background:var(--lilac)', icStyle: 'color:var(--lilac-d)', icon: IC.card, titulo: `¿Sigue retenido ${eur(S.retenido.importe)}?`, sub: 'Has subido un Excel nuevo: actualízalo para no descontarlo dos veces', subStyle: 'color:var(--lilac-d)' }) : ''}
     ${S.banco && S.banco.caducada ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Renueva el permiso con BBVA', sub: 'Ha caducado: un minuto y vuelvo a traer tus movimientos solos', subStyle: 'color:#5A4238' })
       : bancoActivo() ? (diasPermiso() !== null && diasPermiso() <= 7 ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.alert, titulo: `Tu permiso con BBVA caduca en ${Math.max(0, diasPermiso())} ${diasPermiso() === 1 ? 'día' : 'días'}`, sub: 'Renuévalo ahora para no volver al Excel', subStyle: 'color:var(--butter-d)' }) : '')
-        + linkCard({ attrs: 'id="bSyncBanco"', style: 'background:#fff;border:1px solid var(--line)', icStyle: 'background:var(--sky);color:var(--sky-d)', icon: IC.repeat, titulo: 'Movimientos de BBVA al día', sub: (S.banco.ultima ? 'Última vez ' + haceCuanto(S.banco.ultima) : 'Aún sin traer') + ' · toca para actualizar' + (S.banco.error ? ' · último intento con error' : '') })
+        + tarjetaSync()
       : linkCard({ attrs: 'id="bSubirHome"', style: viejo ? 'background:var(--sky)' : 'background:#fff;border:1px solid var(--line)', icStyle: (viejo ? '' : 'background:var(--sky);') + 'color:var(--sky-d)', icon: IC.file, titulo: viejo ? 'Toca subir el Excel' : 'Subir el Excel de la semana', sub: 'Datos hasta el ' + fmtF(ultimo) })}
     ${linkCard({ href: '#metas', style: 'background:#fff;border:1.5px dashed #F0C3D5', icStyle: 'background:var(--rose);color:var(--berry)', icon: IC.uturn, titulo: `Rescates: ${eur(c.rescates - c.forzados)} de ${eur(S.limiteRescates)}`, sub: c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : 'Lo que ha vuelto de tu ahorro este mes' })}
     ${plz.length > 1 ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.card, titulo: `${plz.length} cargos de pago a plazos`, sub: [...new Set(plz.map((p) => p.prov))].join(', ') + ' · ¿cuántas cuotas quedan?', subStyle: 'color:var(--butter-d)' }) : tarjetaPlazos(plz)}
