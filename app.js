@@ -1,9 +1,9 @@
-/* Brisa · v0.4.10 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.11 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.10';
+  const VERSION_APP = '0.4.11';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -1175,18 +1175,28 @@
     for (const m of S.movs) {
       if (m.importe >= 0 || m.fecha < desde || -m.importe > 120 || /^bizum/i.test(m.concepto)) continue;
       if (rePlz.test(B.limpiar(m.concepto + ' ' + m.tipo))) continue;
-      if (!cat(m).cuentaComoGasto || (S.fijos || []).some((x) => esCuotas(x) && encajaFijo(x, m))) continue;
+      const c = cat(m);
+      // Las compras del día a día (súper, bares, estanco, gasolina, tiendas…) no son suscripciones aunque vayas cada mes
+      if (!c.cuentaComoGasto || (NO_SUSCRIP.has(c.categoria) && !MEMBRESIAS.some((x) => x.es.test(claveGrupo(m)))) || (S.fijos || []).some((x) => esCuotas(x) && encajaFijo(x, m))) continue;
       const k = claveGrupo(m); if (k) (g[k] = g[k] || []).push(m);
     }
     const out = [];
     for (const [k, ms] of Object.entries(g)) {
       ms.sort((a, b) => a.fecha.localeCompare(b.fecha));
-      if (ms.length < 2 || new Set(ms.map((m) => m.fecha.slice(0, 7))).size < ms.length) continue;
+      // Una suscripción: al menos 3 cargos, uno al mes, el mismo día (±4) y el mismo importe hasta el último
+      if (ms.length < 3 || new Set(ms.map((m) => m.fecha.slice(0, 7))).size < ms.length) continue;
       if (!ms.slice(1).every((m, i) => { const d = dias(ms[i].fecha, m.fecha); return d >= 20 && d <= 40; })) continue;
+      const diasMes = ms.map((m) => Number(m.fecha.slice(8, 10)));
+      const dm = Math.max(...diasMes) - Math.min(...diasMes);
+      if (dm > 4 && dm < 24) continue; // 24+: cobros a final/principio de mes (30 y 2), siguen siendo el mismo día
+      const previos = ms.slice(0, -1).map((m) => -m.importe);
+      if (Math.max(...previos) > Math.min(...previos) * 1.03 + 0.01) continue;
       out.push({ clave: k, nombre: nombreGrupo(ms[ms.length - 1]), movs: ms, ultimo: ms[ms.length - 1] });
     }
     return out;
   }
+  const NO_SUSCRIP = new Set(['Supermercado', 'Comer fuera', 'Estanco', 'Efectivo', 'Coche y gasolina', 'Compras', 'Ocio y planes', 'Cuidado personal',
+    'Regalos', 'Viajes', 'Transporte', 'Salud', 'Otra cuenta', 'Por revisar']);
   // Membresías que solo compensan si las usas
   const MEMBRESIAS = [
     { es: /uber.*one/, uso: /uber.*(eats|trip|rides)/, nombre: 'Uber One' },
