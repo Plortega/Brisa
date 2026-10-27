@@ -1,9 +1,9 @@
-/* Brisa · v0.5.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.6.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.5.2';
+  const VERSION_APP = '0.6.0';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -838,7 +838,7 @@
         ${orn(22, '#fff', 'top:16px;right:20px')}
         <div class="pix" style="font-size:13px;color:var(--mint-d);letter-spacing:.5px">RESERVADO</div>
         <div class="h1" style="font-size:24px;margin:6px 0 8px;padding-right:36px">Hecho: ${esc(h.nombre.toLowerCase())}</div>
-        <p style="margin:0;font-size:14px;line-height:1.45;color:#2E4A3C">${h.tipo === 'plazos'
+        <p style="margin:0;font-size:14px;line-height:1.45;color:var(--t-mint)">${h.tipo === 'plazos'
           ? `He apuntado ${h.n} cuotas de ${eur(h.cuota, true)} en tus pagos fijos; la primera la resto ya. Hoy puedes gastar ${eur(c.hoyPuedes)}. Cuando el cargo aparezca en el Excel, lo cruzo solo.`
           : `He restado ${eur(h.importe, true)} de tu número del día: ahora hoy puedes gastar ${eur(c.hoyPuedes)}. Cuando el cargo aparezca en el Excel, lo cruzo y quito la reserva.`}</p>
         <div class="btns" style="margin-top:14px"><a class="btn" href="#inicio" style="background:var(--mint-d)">Volver a Inicio</a><button type="button" class="btn ghost" id="cqUndo" style="width:auto;background:transparent;border:1.5px solid var(--mint-d);color:var(--mint-d)">Deshacer</button></div>
@@ -882,11 +882,11 @@
         ${orn(24, '#fff', 'top:16px;right:20px')}${orn(12, '#fff', 'top:48px;right:52px')}
         <div class="pix" style="font-size:13px;color:${v.tc};letter-spacing:.5px">${v.tag}</div>
         <div class="h1" style="font-size:24px;margin:6px 0 8px;padding-right:40px;line-height:1.15">${v.t}</div>
-        <p style="margin:0;font-size:14px;line-height:1.45;color:#4A2E3C">${v.b}</p>
+        <p style="margin:0;font-size:14px;line-height:1.45;color:var(--t-hero)">${v.b}</p>
       </section>
       <div class="card" style="padding:4px 16px">
         <div style="padding:12px 0 10px;border-bottom:1px solid var(--line)">
-          <div class="row small"><span class="muted">Tus corazones</span><span style="color:#6A3A50"><b>${hDesp}</b> de 10 · ${hAntes > hDesp ? 'pierdes ' + (hAntes - hDesp) : 'no pierdes ninguno'}</span></div>
+          <div class="row small"><span class="muted">Tus corazones</span><span style="color:var(--t-hero2)"><b>${hDesp}</b> de 10 · ${hAntes > hDesp ? 'pierdes ' + (hAntes - hDesp) : 'no pierdes ninguno'}</span></div>
           <div class="hearts" role="img" aria-label="Te quedarían ${hDesp} de 10 corazones">${hearts}</div>
         </div>
         ${filas.map((f, i) => `<div class="row" style="min-height:44px;${i < filas.length - 1 ? 'border-bottom:1px solid var(--line)' : ''}"><span class="small muted">${f[0]}</span><span style="white-space:nowrap">${f[1] ? `<span class="small muted" style="text-decoration:line-through">${f[1]}</span> ` : ''}<b class="num" style="font-size:16px;color:${f[3]}">${f[2]}</b></span></div>`).join('')}
@@ -974,14 +974,14 @@
     const volver = S.perfil ? '#ajustes' : '#bienvenida';
     if (!NUBE) return `<div class="top"><a class="icon-btn" href="${volver}" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Tu cuenta${SPARK}</h1></div><div class="empty">La nube aún no está configurada.</div>`;
     if (nube.email) return `<div class="top"><a class="icon-btn" href="${volver}" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Tu cuenta${SPARK}</h1></div>
-      <section class="hero"><b>Has entrado como ${esc(nube.email)}</b><p class="small" style="color:#4A2E3C;line-height:1.5;margin:6px 0 0">Tus datos se guardan solos en la nube cada vez que cambian.</p></section>
+      <section class="hero"><b>Has entrado como ${esc(nube.email)}</b><p class="small" style="color:var(--t-hero);line-height:1.5;margin:6px 0 0">Tus datos se guardan solos en la nube cada vez que cambian.</p></section>
       <a class="btn" href="${volver}">Seguir</a>`;
     return `
     <div class="top"><a class="icon-btn" href="${volver}" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Tu cuenta${SPARK}</h1></div>
     <section class="hero" style="margin-bottom:18px">
       ${orn(22, '#fff', 'top:18px;right:22px', 'tw')}${heart(12, '#E27FA8', 'top:58px;right:24px')}
       <div class="h1" style="font-size:24px;padding-right:40px">Guarda Brisa en la nube</div>
-      <p style="margin:8px 0 0;font-size:14px;line-height:1.5;color:#4A2E3C">Así no pierdes nada si cambias de móvil o borras Chrome. Sin contraseñas: te mando un enlace a tu correo.</p>
+      <p style="margin:8px 0 0;font-size:14px;line-height:1.5;color:var(--t-hero)">Así no pierdes nada si cambias de móvil o borras Chrome. Sin contraseñas: te mando un enlace a tu correo.</p>
     </section>
     <form id="fCuenta">
       <label class="field">Tu correo<input name="email" type="email" autocomplete="email" inputmode="email" required placeholder="tu@correo.com"></label>
@@ -997,7 +997,7 @@
     <div class="hero" style="padding:30px 24px;margin-bottom:22px">
       ${orn(34, '#fff', 'top:20px;right:24px', 'tw')}${orn(14, '#E27FA8', 'top:60px;right:66px', 'tw')}${heart(14, '#fff', 'top:70px;right:26px')}
       <div class="h1" style="font-size:40px">Brisa</div>
-      <p style="margin:8px 0 0;font-size:16px;line-height:1.5;color:#4A2E3C">Hola, soy Brisa. Te ayudo a gastar con calma y ahorrar sin pensarlo. Primero, tu mes en cuatro datos (aproximado vale).</p>
+      <p style="margin:8px 0 0;font-size:16px;line-height:1.5;color:var(--t-hero)">Hola, soy Brisa. Te ayudo a gastar con calma y ahorrar sin pensarlo. Primero, tu mes en cuatro datos (aproximado vale).</p>
     </div>
     <form id="fPerfil">
       <label class="field">¿Cómo te llamas?<input name="nombre" value="${esc(p.nombre)}" autocomplete="given-name" required></label>
@@ -1078,14 +1078,14 @@
     ${grandes.length ? `<div class="card" style="background:var(--lilac);border:0;color:var(--lilac-d)"><b>${grandes.length === 1 ? 'Un extra' : grandes.length + ' extras'}</b><p class="small" style="margin:4px 0 0;line-height:1.45">${grandes.map(([m]) => esc(nombreMov(m)) + ' · ' + eur(-m.importe)).join('<br>')}<br>No cuentan en tu mes típico, pero salen de tu saldo.</p></div>` : ''}
     ${top.length ? `<div class="h2">En qué se fue</div>
     ${top.map(([k, v], i) => `<div style="margin-bottom:10px"><div class="row" style="font-size:14px;margin-bottom:5px"><span>${esc(k)}</span><span class="num">${eur(v)}</span></div><div class="bar l" style="height:6px"><i style="width:${Math.round(v / max * 100)}%;background:${BARRAS[i % BARRAS.length]}"></i></div></div>`).join('')}` : ''}
-    ${apart || resc ? `<div class="card dash" style="color:#4A2E3C;margin-top:14px;display:flex;flex-direction:column;gap:6px">
+    ${apart || resc ? `<div class="card dash" style="color:var(--t-hero);margin-top:14px;display:flex;flex-direction:column;gap:6px">
       ${apart ? `<div class="row small"><span>Apartado a tu ahorro</span><span class="num" style="color:var(--mint-d)">+${eur(apart, true)}</span></div>` : ''}
       ${resc ? `<div class="row small"><span>Rescatado de tu ahorro</span><span class="num" style="color:var(--berry)">−${eur(resc, true)}</span></div>` : ''}
     </div>` : ''}
     <div class="card" style="margin-top:14px;background:var(--lilac);border:0">
       <b>¿Tienes pagos retenidos?</b>
       <p class="small" style="margin:4px 0 10px;color:var(--lilac-d);line-height:1.45">El Excel no los incluye. Mira «Retenciones» en tu app de BBVA y apunta el total para que tu número del día sea exacto.</p>
-      ${retenidoCard('background:#fff;margin:0')}
+      ${retenidoCard('background:var(--card);margin:0')}
     </div>
     <div class="btns">${rev ? '<a class="btn ghost" href="#movimientos">Revisar ' + rev + '</a>' : ''}<a class="btn" href="#inicio">Ir a Inicio</a></div>`;
   };
@@ -1113,13 +1113,13 @@
   // Tarjeta de BBVA en Inicio: cambia mientras actualiza y dice cómo fue
   function tarjetaSync() {
     const R = banco.resultado; const reciente = R && R.ok && Date.now() - R.t < 60000;
-    if (banco.ocupado) return linkCard({ attrs: 'id="bSyncBanco" aria-busy="true"', style: 'background:#fff;border:1px solid var(--line)', icStyle: 'background:var(--sky);color:var(--sky-d)',
+    if (banco.ocupado) return linkCard({ attrs: 'id="bSyncBanco" aria-busy="true"', style: 'background:var(--card);border:1px solid var(--line)', icStyle: 'background:var(--sky);color:var(--sky-d)',
       icon: IC.repeat.replace('<svg', '<svg class="spin"'), titulo: 'Actualizando con BBVA…', sub: 'Un momento, estoy trayendo tus movimientos' });
     if (R && R.error || (!R && S.banco.error)) return linkCard({ attrs: 'id="bSyncBanco"', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert,
-      titulo: R ? R.txt : 'El último intento con BBVA falló', sub: (S.banco.ultima ? 'Datos de ' + haceCuanto(S.banco.ultima) : 'Aún sin traer') + ' · toca para reintentar', subStyle: 'color:#5A4238' });
+      titulo: R ? R.txt : 'El último intento con BBVA falló', sub: (S.banco.ultima ? 'Datos de ' + haceCuanto(S.banco.ultima) : 'Aún sin traer') + ' · toca para reintentar', subStyle: 'color:var(--t-peach)' });
     if (reciente) return linkCard({ attrs: 'id="bSyncBanco"', style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: ic2('M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0z', '<circle cx="12" cy="12" r="8"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/>'),
       titulo: R.n ? `¡Listo! ${R.n} ${R.n === 1 ? 'movimiento nuevo' : 'movimientos nuevos'}` : '¡Listo! Ya estaba todo al día', sub: 'Actualizado ahora mismo con BBVA', subStyle: 'color:var(--mint-d)' });
-    return linkCard({ attrs: 'id="bSyncBanco"', style: 'background:#fff;border:1px solid var(--line)', icStyle: 'background:var(--sky);color:var(--sky-d)', icon: IC.repeat,
+    return linkCard({ attrs: 'id="bSyncBanco"', style: 'background:var(--card);border:1px solid var(--line)', icStyle: 'background:var(--sky);color:var(--sky-d)', icon: IC.repeat,
       titulo: 'Movimientos de BBVA al día', sub: (S.banco.ultima ? 'Última vez ' + haceCuanto(S.banco.ultima) : 'Aún sin traer') + ' · toca para actualizar' });
   }
   // Corazones: cuánto de tu dinero del día a día del mes te queda (10 = el mes entero)
@@ -1130,7 +1130,7 @@
   R.inicio = () => {
     if (!S.movs.length) return `
       <div class="top"><div><div class="small muted">Hola, ${esc(S.perfil.nombre)}</div><h1>${DIAS[new Date().getDay()]}${SPARK}</h1></div><a class="icon-btn" href="#ajustes" aria-label="Ajustes">${IC.gear}</a></div>
-      <div class="hero"><div class="h1" style="font-size:24px">Aún no tengo tus movimientos</div><p style="color:#4A2E3C;line-height:1.5">Sube el Excel de tu banco y en unos segundos te digo cuánto puedes gastar hoy.</p></div>
+      <div class="hero"><div class="h1" style="font-size:24px">Aún no tengo tus movimientos</div><p style="color:var(--t-hero);line-height:1.5">Sube el Excel de tu banco y en unos segundos te digo cuánto puedes gastar hoy.</p></div>
       <a class="btn" href="#subir">Subir mi Excel</a>`;
     const c = ciclo();
     const ultimo = S.movs[0].fecha;
@@ -1149,35 +1149,35 @@
     </div>
     <section class="hero">
       ${PIX.big.replace(/style="[^"]*"/, 'style="top:18px;right:20px"')}${PIX.spark.replace(/style="[^"]*"/, 'style="top:66px;right:30px"')}
-      <div class="pix" style="font-size:14px;color:#8C2A5A;letter-spacing:.5px">HOY PUEDES GASTAR</div>
+      <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">HOY PUEDES GASTAR</div>
       <div class="big" style="margin:8px 0 10px">${eur(c.hoyPuedes)}</div>
       ${c.modoSaldo ? `
-      <div style="font-size:13px;line-height:1.5;color:#4A2E3C;margin-bottom:10px">${c.disponible > 0 ? 'Con lo que tienes de verdad:' : 'Ojo: tus pagos pendientes superan tu saldo.'} <b>${eur(c.saldo)}</b> en cuenta${c.retenido ? ` − <a href="#fijos" style="color:var(--berry-d)">${eur(c.retenido)} retenido</a>` : ''} − <a href="#fijos" style="color:var(--berry-d)">${eur(c.pendiente)} de fijos</a>${c.reservado ? ` − <a href="#comprar" style="color:var(--berry-d)">${eur(c.reservado)} reservado</a>` : ''}.</div>` : `
-      <div style="font-size:14px;line-height:1.45;color:#4A2E3C;margin-bottom:12px">${c.queda >= 0 ? `Sin pasarte hasta el ${finTxt} y apartando ${eur(c.ahorro)} para ti.` : `Te has pasado ${eur(-c.queda)} este mes. Mañana lo vemos con calma.`}${c.reservado ? ` Ya descuento <a href="#comprar" style="color:var(--berry-d)">${eur(c.reservado)} reservado</a>.` : ''}</div>`}
+      <div style="font-size:13px;line-height:1.5;color:var(--t-hero);margin-bottom:10px">${c.disponible > 0 ? 'Con lo que tienes de verdad:' : 'Ojo: tus pagos pendientes superan tu saldo.'} <b>${eur(c.saldo)}</b> en cuenta${c.retenido ? ` − <a href="#fijos" style="color:var(--berry-d)">${eur(c.retenido)} retenido</a>` : ''} − <a href="#fijos" style="color:var(--berry-d)">${eur(c.pendiente)} de fijos</a>${c.reservado ? ` − <a href="#comprar" style="color:var(--berry-d)">${eur(c.reservado)} reservado</a>` : ''}.</div>` : `
+      <div style="font-size:14px;line-height:1.45;color:var(--t-hero);margin-bottom:12px">${c.queda >= 0 ? `Sin pasarte hasta el ${finTxt} y apartando ${eur(c.ahorro)} para ti.` : `Te has pasado ${eur(-c.queda)} este mes. Mañana lo vemos con calma.`}${c.reservado ? ` Ya descuento <a href="#comprar" style="color:var(--berry-d)">${eur(c.reservado)} reservado</a>.` : ''}</div>`}
       <div class="hearts" role="img" aria-label="Te quedan ${n} de 10 corazones: ${eur(c.libre)} libres de ${eur(c.presupuesto)}">${corazones(n, 21, 18)}</div>
-      <div class="row small" style="color:#6A3A50;margin-top:8px"><span style="white-space:nowrap">Te quedan ${n} de 10 ♡ · ${eur(c.libre)}</span><span style="white-space:nowrap">Hasta el ${aDate(c.fin).getDate()} · ${c.restantes} días</span></div>
+      <div class="row small" style="color:var(--t-hero2);margin-top:8px"><span style="white-space:nowrap">Te quedan ${n} de 10 ♡ · ${eur(c.libre)}</span><span style="white-space:nowrap">Hasta el ${aDate(c.fin).getDate()} · ${c.restantes} días</span></div>
     </section>
     <a class="cq-pill" href="#comprar"><span class="ic">${IC.bag}</span><b>¿Me lo compro?</b>${S.deseos.length ? `<span class="cnt">${S.deseos.length} ${S.deseos.length === 1 ? 'deseo' : 'deseos'}</span>` : ''}${IC.chev}</a>
     ${tarjetaConsejo()}
     ${S.deseos.filter((d) => estadoDeseo(c, d.importe).cabe).slice(0, 1).map((d) => linkCard({ attrs: `data-deseo="${esc(d.id)}"`, style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.bag,
       titulo: `Ya cabe: ${esc(d.nombre)} (${eur(d.importe)})`, sub: 'Está en tu lista de deseos · toca para decidir', subStyle: 'color:var(--mint-d)' })).join('')}
-    ${faltanFijos() ? linkCard({ href: '#fijos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Faltan tus pagos fijos', sub: 'Sin ellos tu número del día sale más alto de lo real. Añádelos o cárgalos desde Ajustes', subStyle: 'color:#5A4238' }) : ''}
-    ${pronto.map((q) => linkCard({ href: '#fijos', style: 'background:#fff;border:1px solid var(--line)', icStyle: 'background:var(--lilac);color:var(--lilac-d)', icon: IC.cal,
+    ${faltanFijos() ? linkCard({ href: '#fijos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Faltan tus pagos fijos', sub: 'Sin ellos tu número del día sale más alto de lo real. Añádelos o cárgalos desde Ajustes', subStyle: 'color:var(--t-peach)' }) : ''}
+    ${pronto.map((q) => linkCard({ href: '#fijos', style: 'background:var(--card);border:1px solid var(--line)', icStyle: 'background:var(--lilac);color:var(--lilac-d)', icon: IC.cal,
       titulo: `${cuando(q.fecha).charAt(0).toUpperCase() + cuando(q.fecha).slice(1)} te cobran ${eur(q.pendiente, true)}`, sub: esc(q.fijo.nombre) + (q.de ? ` · cuota ${q.n} de ${q.de}` : '') + ' · ya está reservado' })).join('')}
-    ${c.finde.length ? linkCard({ href: '#finde', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.sun, titulo: `${aDate(hoy).getDay() >= 5 || aDate(hoy).getDay() === 0 ? 'Este finde te quedan' : 'Este finde puedes gastar'} ${eur(c.findeTotal)}`, sub: 'Viernes a domingo · repartido según tus hábitos', subStyle: 'color:#5A4238' }) : ''}
+    ${c.finde.length ? linkCard({ href: '#finde', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.sun, titulo: `${aDate(hoy).getDay() >= 5 || aDate(hoy).getDay() === 0 ? 'Este finde te quedan' : 'Este finde puedes gastar'} ${eur(c.findeTotal)}`, sub: 'Viernes a domingo · repartido según tus hábitos', subStyle: 'color:var(--t-peach)' }) : ''}
     ${sug.length ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.repeat, titulo: sug.length === 1 ? 'Un pago se repite cada mes' : sug.length + ' pagos se repiten cada mes', sub: '¿Es un pago fijo? Un toque y lo apunto', subStyle: 'color:var(--butter-d)' }) : ''}
     ${S.retenido && S.retenido.importe > 0 && S.ultimaImportacion && S.retenido.fecha < S.ultimaImportacion.cuando ? linkCard({ href: '#fijos', style: 'background:var(--lilac)', icStyle: 'color:var(--lilac-d)', icon: IC.card, titulo: `¿Sigue retenido ${eur(S.retenido.importe)}?`, sub: 'Has subido un Excel nuevo: actualízalo para no descontarlo dos veces', subStyle: 'color:var(--lilac-d)' }) : ''}
-    ${S.banco && S.banco.caducada ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Renueva el permiso con BBVA', sub: 'Ha caducado: un minuto y vuelvo a traer tus movimientos solos', subStyle: 'color:#5A4238' })
+    ${S.banco && S.banco.caducada ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Renueva el permiso con BBVA', sub: 'Ha caducado: un minuto y vuelvo a traer tus movimientos solos', subStyle: 'color:var(--t-peach)' })
       : bancoActivo() ? (diasPermiso() !== null && diasPermiso() <= 7 ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.alert, titulo: `Tu permiso con BBVA caduca en ${Math.max(0, diasPermiso())} ${diasPermiso() === 1 ? 'día' : 'días'}`, sub: 'Renuévalo ahora para no volver al Excel', subStyle: 'color:var(--butter-d)' }) : '')
         + tarjetaSync()
-      : linkCard({ attrs: 'id="bSubirHome"', style: viejo ? 'background:var(--sky)' : 'background:#fff;border:1px solid var(--line)', icStyle: (viejo ? '' : 'background:var(--sky);') + 'color:var(--sky-d)', icon: IC.file, titulo: viejo ? 'Toca subir el Excel' : 'Subir el Excel de la semana', sub: 'Datos hasta el ' + fmtF(ultimo) })}
-    ${linkCard({ href: '#metas', style: 'background:#fff;border:1.5px dashed #F0C3D5', icStyle: 'background:var(--rose);color:var(--berry)', icon: IC.uturn, titulo: `Rescates: ${eur(c.rescates - c.forzados)} de ${eur(S.limiteRescates)}`, sub: c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : 'Lo que ha vuelto de tu ahorro este mes' })}
+      : linkCard({ attrs: 'id="bSubirHome"', style: viejo ? 'background:var(--sky)' : 'background:var(--card);border:1px solid var(--line)', icStyle: (viejo ? '' : 'background:var(--sky);') + 'color:var(--sky-d)', icon: IC.file, titulo: viejo ? 'Toca subir el Excel' : 'Subir el Excel de la semana', sub: 'Datos hasta el ' + fmtF(ultimo) })}
+    ${linkCard({ href: '#metas', style: 'background:var(--card);border:1.5px dashed var(--dash)', icStyle: 'background:var(--rose);color:var(--berry)', icon: IC.uturn, titulo: `Rescates: ${eur(c.rescates - c.forzados)} de ${eur(S.limiteRescates)}`, sub: c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : 'Lo que ha vuelto de tu ahorro este mes' })}
     ${plz.length > 1 ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.card, titulo: `${plz.length} cargos de pago a plazos`, sub: [...new Set(plz.map((p) => p.prov))].join(', ') + ' · ¿cuántas cuotas quedan?', subStyle: 'color:var(--butter-d)' }) : tarjetaPlazos(plz)}
     ${tarjetaDevol()}
-    ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:#5A4238' }) : ''}
+    ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:var(--t-peach)' }) : ''}
     ${tarjetaViaje(c)}
-    ${linkCard({ href: '#semana', style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.cal, titulo: 'Tu semana en 1 minuto', sub: (!S.semanaVista || dias(S.semanaVista, hoyIso()) >= 6) ? '4 tarjetas. Sin Excel, sin cuentas.' : 'Ya la has visto esta semana', subStyle: 'color:#3B4A43' })}
-    <button type="button" class="cq-pill" id="bViaje" style="width:100%;border-style:dashed;font:inherit;cursor:pointer;background:#fff"><span class="ic" style="background:var(--lilac);color:var(--lilac-d)">${IC.plane}</span><b>Me voy de viaje</b><span class="cnt" style="background:var(--lilac);color:var(--lilac-d)">a extras</span>${IC.chev}</button>`;
+    ${linkCard({ href: '#semana', style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.cal, titulo: 'Tu semana en 1 minuto', sub: (!S.semanaVista || dias(S.semanaVista, hoyIso()) >= 6) ? '4 tarjetas. Sin Excel, sin cuentas.' : 'Ya la has visto esta semana', subStyle: 'color:var(--t-mint)' })}
+    <button type="button" class="cq-pill" id="bViaje" style="width:100%;border-style:dashed;font:inherit;cursor:pointer;background:var(--card)"><span class="ic" style="background:var(--lilac);color:var(--lilac-d)">${IC.plane}</span><b>Me voy de viaje</b><span class="cnt" style="background:var(--lilac);color:var(--lilac-d)">a extras</span>${IC.chev}</button>`;
   };
 
   /* ---------- Brisa te recomienda (v0.4.9) ---------- */
@@ -1365,7 +1365,7 @@
     </section>`;
     return `
     <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver a Inicio">${IC.back}</a><div style="flex-grow:1"><h1>Brisa te recomienda${SPARK}</h1><div class="small muted">Lo que veo en tu cuenta. Se calcula en tu móvil.</div></div></div>
-    ${L.length ? L.map(tarjeta).join('') : `<section class="hero" style="text-align:center">${orn(18, '#fff', 'top:16px;right:22px', 'tw')}<div class="h1" style="font-size:22px">Todo en orden</div><p class="small" style="color:#4A2E3C;line-height:1.5;margin:6px 0 0">Ahora mismo no veo nada que mejorar. Si cambia algo, te aviso aquí.</p></section>`}
+    ${L.length ? L.map(tarjeta).join('') : `<section class="hero" style="text-align:center">${orn(18, '#fff', 'top:16px;right:22px', 'tw')}<div class="h1" style="font-size:22px">Todo en orden</div><p class="small" style="color:var(--t-hero);line-height:1.5;margin:6px 0 0">Ahora mismo no veo nada que mejorar. Si cambia algo, te aviso aquí.</p></section>`}
     <section class="rec ys">
       <div class="rec-h"><span class="ic">${IC.house}</span><div class="t"><div class="pix lab">¿Y SI…?</div><b>Prueba un gasto nuevo antes de decir que sí</b></div></div>
       <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:10px;margin-top:12px">
@@ -1506,9 +1506,9 @@
       ${orn(38, '#fff', 'top:26px;right:26px', 'tw')}${orn(16, '#fff', 'top:72px;right:70px', 'tw d2')}${heart(16, '#fff', 'bottom:104px;right:30px')}${orn(12, '#fff', 'bottom:130px;right:58px', 'tw d4')}
       <div class="pix" style="font-size:13px;color:${k.tc};letter-spacing:.5px">${k.tag}</div>
       <div class="h1" style="font-size:36px;line-height:1.12;letter-spacing:-.8px;padding-right:44px">${k.t}</div>
-      <p style="margin:0;font-size:17px;line-height:1.5;color:#4A2E3C">${k.b}</p>
+      <p style="margin:0;font-size:17px;line-height:1.5;color:var(--t-hero)">${k.b}</p>
       <div style="flex-grow:1"></div>
-      ${k.big ? `<div class="row" style="background:rgba(255,255,255,.72);border-radius:22px;padding:16px 18px"><span class="small" style="color:#4A2E3C">${k.big[0]}</span><span class="num" style="font-size:24px">${k.big[1]}</span></div>` : ''}
+      ${k.big ? `<div class="row" style="background:rgba(255,255,255,.72);border-radius:22px;padding:16px 18px"><span class="small" style="color:var(--t-hero)">${k.big[0]}</span><span class="num" style="font-size:24px">${k.big[1]}</span></div>` : ''}
     </section>
     <div class="btns">${p > 0 ? '<button type="button" class="btn ghost" id="semAtras">Atrás</button>' : ''}<button type="button" class="btn" id="semSig">${ult ? 'Listo' : 'Siguiente'}</button></div>`;
   };
@@ -1529,14 +1529,14 @@
     <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><div style="flex-grow:1"><h1>Modo finde${SPARK}</h1><div class="small muted">De viernes a domingo, un solo número</div></div></div>
     <section class="hero">
       ${PIX.spark.replace(/style="[^"]*"/, 'style="top:22px;right:26px"')}
-      <div class="pix" style="font-size:14px;color:#8C2A5A;letter-spacing:.5px">${enFinde ? 'TE QUEDAN ESTE FINDE' : 'ESTE FINDE PUEDES GASTAR'}</div>
+      <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">${enFinde ? 'TE QUEDAN ESTE FINDE' : 'ESTE FINDE PUEDES GASTAR'}</div>
       <div class="big" style="margin:8px 0 10px">${eur(c.findeTotal)}${enFinde && gastado ? `<span class="small muted" style="font-family:var(--sans);letter-spacing:0;margin-left:8px">de ${eur(total)}</span>` : ''}</div>
       <div class="hearts" role="img" aria-label="${n} de 10 corazones del finde">${corazones(enFinde ? n : 10, 21, 18)}</div>
       <div class="card" style="margin:14px 0 0;background:rgba(255,255,255,.75);border:0;padding:6px 16px">
-        ${c.finde.length ? c.finde.map((r) => `<div class="row" style="min-height:40px;border-bottom:1px dashed #F0C3D5"><span>${diaTxt(r.fecha)}</span><span class="num">${eur(r.importe)}</span></div>`).join('') : '<div class="small" style="padding:8px 0">Tu cobro llega antes del finde: el número cambiará con tu nómina.</div>'}
+        ${c.finde.length ? c.finde.map((r) => `<div class="row" style="min-height:40px;border-bottom:1px dashed var(--dash)"><span>${diaTxt(r.fecha)}</span><span class="num">${eur(r.importe)}</span></div>`).join('') : '<div class="small" style="padding:8px 0">Tu cobro llega antes del finde: el número cambiará con tu nómina.</div>'}
       </div>
     </section>
-    <button type="button" class="link-card" id="bProximos" style="background:#fff;border:1px solid var(--line)"><span class="t"><span class="small" style="line-height:1.45">Repartido con tus hábitos: ${habitoFinde(c.H)} <b style="color:var(--berry)">Ver tus próximos días</b></span></span>${IC.chev}</button>
+    <button type="button" class="link-card" id="bProximos" style="background:var(--card);border:1px solid var(--line)"><span class="t"><span class="small" style="line-height:1.45">Repartido con tus hábitos: ${habitoFinde(c.H)} <b style="color:var(--berry)">Ver tus próximos días</b></span></span>${IC.chev}</button>
     ${enFinde ? `<div class="h2">Gastado este finde</div>
     <div class="card" style="padding:4px 16px">${gastos.length ? gastos.map((m) => `<div class="row" style="min-height:44px;border-bottom:1px solid var(--line)"><span>${esc(nombreMov(m))} <span class="xs muted">· ${DIAS_C[aDate(m.fechaValor || m.fecha).getDay()].toLowerCase()}</span></span><span class="num">${eur(-m.importe, true)}</span></div>`).join('') : '<div class="empty" style="padding:16px">Aún nada en tu Excel</div>'}</div>` : ''}
     <p class="xs muted" style="line-height:1.45">Lo que no gastes un día pasa a los siguientes. Las compras del finde salen en tu Excel el lunes: Brisa usa la fecha real de la compra.</p>`;
@@ -1565,8 +1565,8 @@
     const fila = (m) => {
       const c = cat(m);
       return `<button class="mov" data-mov="${esc(m.id)}">
-        <span class="av" style="background:${COLORES[c.categoria] || '#fff'};${c.categoria === 'Por revisar' ? 'border:1.5px dashed var(--rose3)' : ''}">${esc(nombreMov(m).charAt(0).toUpperCase())}</span>
-        <span class="t"><span class="n">${esc(nombreMov(m))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || '#fff'}">${esc(c.categoria)}</span> ${fmtF(m.fecha)}${c.aplazado ? ' · aplazado' : ''}${c.devolucion ? ' · devolución' : ''}${devueltoDe(m.id) ? (-m.importe - devueltoDe(m.id) > 0.004 ? ' · tu parte ' + eur(-m.importe - devueltoDe(m.id), true) : ' · te salió gratis') : ''}</span></span>
+        <span class="av" style="background:${COLORES[c.categoria] || 'var(--card)'};${c.categoria === 'Por revisar' ? 'border:1.5px dashed var(--rose3)' : ''}">${esc(nombreMov(m).charAt(0).toUpperCase())}</span>
+        <span class="t"><span class="n">${esc(nombreMov(m))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || 'var(--card)'}">${esc(c.categoria)}</span> ${fmtF(m.fecha)}${c.aplazado ? ' · aplazado' : ''}${c.devolucion ? ' · devolución' : ''}${devueltoDe(m.id) ? (-m.importe - devueltoDe(m.id) > 0.004 ? ' · tu parte ' + eur(-m.importe - devueltoDe(m.id), true) : ' · te salió gratis') : ''}</span></span>
         <span class="amt ${m.importe > 0 ? 'pos' : ''}">${m.importe > 0 ? '+' : ''}${eur(m.importe, true)}</span></button>`;
     };
     return `
@@ -1674,7 +1674,7 @@
         <div>Día a día<br><span class="num" style="font-size:16px;color:var(--ink)">${eur(P.diaADia)}</span></div>
         <div>Para ti<br><span class="num" style="font-size:16px;color:var(--mint-d)">${eur(P.paraTi)}</span></div>
       </div>
-      <div style="background:var(--mint);border-radius:16px;padding:10px 14px;line-height:1.5;color:#22392E" class="small">Gastando un ${Math.round(r * 100)} % menos que tu normal (${eur(P.normal * r)} menos al mes) ahorras <b>${eur(P.paraTi)} al mes</b>. ${eta}</div>
+      <div style="background:var(--mint);border-radius:16px;padding:10px 14px;line-height:1.5;color:var(--t-mint2)" class="small">Gastando un ${Math.round(r * 100)} % menos que tu normal (${eur(P.normal * r)} menos al mes) ahorras <b>${eur(P.paraTi)} al mes</b>. ${eta}</div>
     </section>
     ${H.hay ? `<div class="h2">Tu semana</div>
     <section class="card" style="display:flex;flex-direction:column;gap:10px;border-radius:28px;padding:18px 20px">
@@ -1719,9 +1719,9 @@
     const capa = document.createElement('div'); capa.className = 'scrim';
     capa.innerHTML = `<div class="pop stitch modal" role="dialog" aria-modal="true" aria-label="Presupuesto aplicado">
       ${orn(34, '#fff', 'top:18px;left:26px', 'tw d1')}${orn(16, '#E27FA8', 'top:54px;left:64px', 'tw d2')}${orn(26, '#fff', 'top:22px;right:30px', 'tw d3')}${orn(14, '#E27FA8', 'top:70px;right:70px', 'tw d4')}${orn(18, '#fff', 'bottom:92px;left:22px', 'tw d5')}${orn(20, '#fff', 'bottom:100px;right:24px', 'tw d6')}
-      <div style="width:72px;height:72px;border-radius:36px;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--berry);margin-bottom:6px"><svg width="34" height="34" viewBox="0 0 24 24" stroke-width="2"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <div style="width:72px;height:72px;border-radius:36px;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--berry);margin-bottom:6px"><svg width="34" height="34" viewBox="0 0 24 24" stroke-width="2"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
       <span class="h1" style="font-size:28px;line-height:1.1">¡Presupuesto aplicado!</span>
-      <span style="font-size:15px;line-height:1.45;color:#4A2E3C">${ya ? 'Desde hoy' : 'Con tu próxima nómina (' + fmtF(c.fin) + ')'} Brisa usa estos topes y aparta <b>${eur(P.paraTi)}</b> al mes para ti.</span>
+      <span style="font-size:15px;line-height:1.45;color:var(--t-hero)">${ya ? 'Desde hoy' : 'Con tu próxima nómina (' + fmtF(c.fin) + ')'} Brisa usa estos topes y aparta <b>${eur(P.paraTi)}</b> al mes para ti.</span>
       <button class="btn" id="mCerrar" style="margin-top:10px">Genial</button></div>`;
     document.body.appendChild(capa);
     const cerrar = () => capa.remove();
@@ -1750,7 +1750,7 @@
       const pc = Math.min(100, Math.round(m.ahorrado / m.objetivo * 100));
       const dash = (pc / 100 * 276.5).toFixed(0);
       const es = m === activa;
-      return `<section class="hero" style="background:${es ? 'var(--mint)' : '#fff'};display:flex;gap:16px;align-items:center;padding:20px;${es ? '' : 'outline:0;border:1px solid var(--line)'}">
+      return `<section class="hero" style="background:${es ? 'var(--mint)' : 'var(--card)'};display:flex;gap:16px;align-items:center;padding:20px;${es ? '' : 'outline:0;border:1px solid var(--line)'}">
         ${es ? orn(14, '#fff', 'bottom:16px;right:22px') : ''}
         <div style="position:relative;width:96px;height:96px;flex-shrink:0">
           <svg width="96" height="96" viewBox="0 0 104 104" role="img" aria-label="${pc} % completado"><circle cx="52" cy="52" r="44" stroke="rgba(255,255,255,.8)" stroke-width="10"/>${pc > 0 ? `<circle cx="52" cy="52" r="44" stroke="#6FBF98" stroke-width="10" stroke-dasharray="${dash} 277" transform="rotate(-90 52 52)"/>` : ''}</svg>
@@ -1770,7 +1770,7 @@
       <div class="bar l"><i style="width:${pr}%;${usado > S.limiteRescates ? 'background:var(--berry)' : ''}"></i></div>
       <p class="xs muted" style="margin:8px 0 0;line-height:1.45">${usado > S.limiteRescates ? `Este mes te has pasado ${eur(usado - S.limiteRescates)} del límite. ` : ''}Dinero que ha vuelto de tu ahorro este mes. Sacar no está prohibido: solo queremos que se vea.</p>
     </section>
-    ${linkCard({ attrs: 'id="bNuevaMeta"', style: 'background:rgba(255,255,255,.6);border:1.5px dashed var(--rose3)', icStyle: 'background:var(--peach);color:var(--peach-d)', icon: IC.plus, titulo: 'Crear otra meta', sub: 'Empieza al completar la anterior' })}`;
+    ${linkCard({ attrs: 'id="bNuevaMeta"', style: 'background:var(--wash);border:1.5px dashed var(--rose3)', icStyle: 'background:var(--peach);color:var(--peach-d)', icon: IC.plus, titulo: 'Crear otra meta', sub: 'Empieza al completar la anterior' })}`;
   };
 
   /* ---------- Pagos fijos: calendario y lista ---------- */
@@ -1833,17 +1833,17 @@
     return `
     <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Pagos fijos${SPARK}</h1></div>
     <p class="small muted" style="margin-top:0;line-height:1.5">Lo que tiene que salir antes de tu cobro del ${fmtF(c.fin)}. Brisa lo reserva para que tu número del día sea real y lo marca como pagado sola cuando sale en tu Excel. Toca uno para cambiarlo o darlo de baja.</p>
-    ${faltanFijos() ? `<div class="card" style="background:var(--peach);border:0;color:#5A4238"><b>Aún no tienes tus fijos de cada mes</b><p class="small" style="margin:4px 0 0;line-height:1.45">Pole, suscripciones, seguros… Añádelos abajo o cárgalos desde <a href="#ajustes">Ajustes → Restaurar copia o reglas</a>.</p></div>` : ''}
+    ${faltanFijos() ? `<div class="card" style="background:var(--peach);border:0;color:var(--t-peach)"><b>Aún no tienes tus fijos de cada mes</b><p class="small" style="margin:4px 0 0;line-height:1.45">Pole, suscripciones, seguros… Añádelos abajo o cárgalos desde <a href="#ajustes">Ajustes → Restaurar copia o reglas</a>.</p></div>` : ''}
     ${calendario(c)}
     <div class="total-pix"><span class="pix">TOTAL PENDIENTE</span><span class="num" style="font-size:22px">${eur(c.pendiente, true)}</span></div>
     ${pend.length ? `<div class="h2">Antes de cobrar</div><div class="card" style="padding:4px 16px">${pend.map((q) => filaCargo(q, 'pendiente', q.pendiente)).join('')}</div>` : ''}
     ${pag.length ? `<div class="h2">Pagados en este ciclo</div><div class="card" style="padding:4px 16px">${pag.map((q) => filaCargo(q, 'pagado')).join('')}</div>` : ''}
     ${plz.length ? `<div class="h2">Pagos a plazos sin apuntar</div>${tarjetaPlazos(plz)}` : ''}
     ${sug.length ? `<div class="h2">¿Estos también son fijos?</div><p class="xs muted" style="margin:-4px 0 8px;line-height:1.45">Se repiten cada mes con un importe parecido. Toca uno para decirme si lo es.</p>
-    <div class="card" style="padding:4px 16px;background:#FFFBEA">${sug.map((s) => `<button class="mov" data-sug="${esc(s.clave)}"><span class="av" style="background:var(--butter);color:var(--butter-d)">?</span><span class="t"><span class="n">${esc(s.nombre)}</span><span class="xs muted">${s.meses.join(', ')} · hacia el día ${s.dia}</span></span><span class="amt">${eur(s.importe, true)}</span></button>`).join('')}</div>` : ''}
+    <div class="card" style="padding:4px 16px;background:var(--butter-l)">${sug.map((s) => `<button class="mov" data-sug="${esc(s.clave)}"><span class="av" style="background:var(--butter);color:var(--butter-d)">?</span><span class="t"><span class="n">${esc(s.nombre)}</span><span class="xs muted">${s.meses.join(', ')} · hacia el día ${s.dia}</span></span><span class="amt">${eur(s.importe, true)}</span></button>`).join('')}</div>` : ''}
     ${futuros.length ? `<div class="h2">Empiezan más adelante</div><div class="card" style="padding:4px 16px">${futuros.map((o) => filaCargo({ ...o.q, n: o.q.n }, 'despues')).join('')}</div>` : ''}
     ${retenidoCard('background:var(--lilac);margin-top:12px')}
-    ${linkCard({ attrs: 'id="bNuevoFijo"', style: 'background:rgba(255,255,255,.6);border:1.5px dashed var(--rose3)', icStyle: 'background:var(--peach);color:var(--peach-d)', icon: IC.plus, titulo: 'Añadir pago fijo', sub: 'Alquiler, una cuota, una suscripción…' })}`;
+    ${linkCard({ attrs: 'id="bNuevoFijo"', style: 'background:var(--wash);border:1.5px dashed var(--rose3)', icStyle: 'background:var(--peach);color:var(--peach-d)', icon: IC.plus, titulo: 'Añadir pago fijo', sub: 'Alquiler, una cuota, una suscripción…' })}`;
   };
 
   /* ---------- Ajustes ---------- */
@@ -1857,8 +1857,8 @@
     <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Ajustes${SPARK}</h1></div>
     <section class="hero" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:24px;margin-bottom:14px">
       ${orn(20, '#fff', 'top:12px;right:18px')}
-      <span style="width:48px;height:48px;border-radius:24px;background:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:22px;font-style:italic;color:var(--berry);flex-shrink:0">${esc((p.nombre || '?').charAt(0).toUpperCase())}</span>
-      <span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">${esc(p.nombre)}</b><span class="small" style="color:#6A3A50">${desde ? 'Tus datos desde ' + mesTexto(desde) : 'Aún sin movimientos'}</span></span>
+      <span style="width:48px;height:48px;border-radius:24px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:22px;font-style:italic;color:var(--berry);flex-shrink:0">${esc((p.nombre || '?').charAt(0).toUpperCase())}</span>
+      <span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">${esc(p.nombre)}</b><span class="small" style="color:var(--t-hero2)">${desde ? 'Tus datos desde ' + mesTexto(desde) : 'Aún sin movimientos'}</span></span>
     </section>
     <div class="aj-lbl">Tu dinero</div>
     <div class="aj-grp">
@@ -1879,6 +1879,11 @@
         + filaAj({ btn: 'bSalir', t: 'Cerrar sesión', s: 'Tus datos se quedan en este móvil y en la nube' })
         : filaAj({ href: '#cuenta', t: 'Guardar en la nube', s: 'Para no perder nada si cambias de móvil. También hace falta para conectar BBVA' })}
     </div>` : ''}
+    <div class="aj-lbl">Apariencia</div>
+    <div class="aj-grp" style="padding:12px 14px">
+      <div class="seg" role="group" aria-label="Apariencia" style="margin:0">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([k, t]) => `<button type="button" data-tema="${k}" aria-pressed="${temaElegido() === k}">${t}</button>`).join('')}</div>
+      <p class="xs muted" style="margin:8px 4px 2px">${temaElegido() === 'auto' ? 'Como tu móvil: si se pone oscuro, Brisa también.' : temaElegido() === 'dark' ? 'Siempre en modo oscuro.' : 'Siempre en modo claro.'}</p>
+    </div>
     <div class="aj-lbl">Privacidad</div>
     <div class="aj-grp">
       ${filaAj({ btn: 'bCandado', t: 'Entrar con huella', s: (leerC() && leerC().on) ? (leerC().cred ? 'Huella o PIN' : 'Con PIN') + ' si llevas más de 5 min sin usarla' : 'Nadie más ve tus cuentas', v: (leerC() && leerC().on) ? 'Activado' : 'No' })}
@@ -1959,7 +1964,7 @@
 
   /* ---------- Hojas de devoluciones por Bizum ---------- */
   const filaDv = (m, extra) => `<div class="mov" style="cursor:default">
-      <span class="av" style="background:${m.importe > 0 ? 'var(--sky)' : COLORES[cat(m).categoria] || '#fff'};color:${m.importe > 0 ? 'var(--sky-d)' : 'inherit'}">${m.importe > 0 ? IC.split.replace('<svg', '<svg width="20" height="20"') : esc(nombreMov(m).charAt(0).toUpperCase())}</span>
+      <span class="av" style="background:${m.importe > 0 ? 'var(--sky)' : COLORES[cat(m).categoria] || 'var(--card)'};color:${m.importe > 0 ? 'var(--sky-d)' : 'inherit'}">${m.importe > 0 ? IC.split.replace('<svg', '<svg width="20" height="20"') : esc(nombreMov(m).charAt(0).toUpperCase())}</span>
       <span class="t"><span class="n">${m.importe > 0 ? 'Bizum ' + (conceptoBizum(m) ? '«' + esc(conceptoBizum(m)) + '»' : 'sin concepto') : esc(nombreMov(m))}</span><span class="xs muted">${fmtF(m.fecha)}${extra ? ' · ' + extra : ''}</span></span>
       <span class="amt ${m.importe > 0 ? 'pos' : ''}">${m.importe > 0 ? '+' : ''}${eur(m.importe, true)}</span></div>`;
   function tuParte(g, b) {
@@ -1999,8 +2004,8 @@
     $sheet.innerHTML = `
       <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">¿De qué gasto es?</div><div class="small muted">Bizum ${conceptoBizum(b) ? '«' + esc(conceptoBizum(b)) + '»' : 'sin concepto'} · +${eur(b.importe, true)} · ${fmtF(b.fecha)}</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
       ${lista.length ? `<div class="card" style="padding:4px 16px;margin-top:14px">${lista.map(({ g, c }) => `<button class="mov" data-g="${esc(g.id)}">
-        <span class="av" style="background:${COLORES[c.categoria] || '#fff'}">${esc(nombreMov(g).charAt(0).toUpperCase())}</span>
-        <span class="t"><span class="n">${esc(nombreMov(g))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || '#fff'}">${esc(c.categoria)}</span> ${fmtF(g.fecha)}${devueltoDe(g.id) ? ' · ya te devolvieron ' + eur(devueltoDe(g.id), true) : ''}</span></span>
+        <span class="av" style="background:${COLORES[c.categoria] || 'var(--card)'}">${esc(nombreMov(g).charAt(0).toUpperCase())}</span>
+        <span class="t"><span class="n">${esc(nombreMov(g))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || 'var(--card)'}">${esc(c.categoria)}</span> ${fmtF(g.fecha)}${devueltoDe(g.id) ? ' · ya te devolvieron ' + eur(devueltoDe(g.id), true) : ''}</span></span>
         <span class="amt">${eur(g.importe, true)}</span></button>`).join('')}</div>`
       : '<p class="small muted" style="margin:16px 0">No veo gastos tuyos en los 10 días anteriores.</p>'}
       <p class="xs muted" style="text-align:center;margin:10px 0 0">Del gasto que elijas resto ${eur(b.importe, true)}: cuenta solo tu parte.</p>`;
@@ -2284,6 +2289,9 @@
   document.addEventListener('pointerdown', () => { if (!bloqueada) marcarUso(); }, { passive: true });
 
   /* ---------- Router ---------- */
+  // Apariencia (v0.6.0): se guarda en este móvil; index.html la aplica antes de pintar para que no parpadee
+  const temaElegido = () => { try { return localStorage.getItem('brisa:tema') || 'auto'; } catch (e) { return 'auto'; } };
+  function ponerTema(t) { try { localStorage.setItem('brisa:tema', t); } catch (e) {} if (window.brisaTema) window.brisaTema(); }
   function ruta() {
     let r = location.hash.slice(1) || 'inicio';
     if (!S.perfil && r !== 'bienvenida' && r !== 'cuenta') r = 'bienvenida';
@@ -2399,6 +2407,7 @@
       else q('#cuentaOk').hidden = false;
     };
     if (q('#bSalir')) q('#bSalir').onclick = async () => { await subir(); await NUBE.auth.signOut(); toast('Sesión cerrada'); render(); };
+    $app.querySelectorAll('[data-tema]').forEach((b) => b.onclick = () => { ponerTema(b.dataset.tema); render(); });
     if (r === 'ajustes') {
       $app.querySelectorAll('[data-campo]').forEach((inp) => inp.onchange = () => {
         const k = inp.dataset.campo; const v = inp.value;
