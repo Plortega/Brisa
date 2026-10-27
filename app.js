@@ -1,9 +1,9 @@
-/* Brisa · v0.5.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.5.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.5.0';
+  const VERSION_APP = '0.5.1';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
