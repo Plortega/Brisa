@@ -1,9 +1,9 @@
-/* Brisa · v0.4.11 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.5.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.11';
+  const VERSION_APP = '0.5.0';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -87,6 +87,8 @@
     // v0.4.8: devoluciones por Bizum
     S.devol = S.devol || {}; S.devolNo = S.devolNo || {};
     // v0.4.9: Brisa te recomienda
+    // v0.5.0: extras y viajes
+    S.viajes = S.viajes || []; S.extras = S.extras || {}; S.puntualNo = S.puntualNo || {};
     S.consejos = S.consejos || {}; ['no', 'tipoNo', 'cancelados'].forEach((k) => (S.consejos[k] = S.consejos[k] || {}));
     S.reglas = S.reglas || { reglasUsuario: {}, palabras: [], importes: [] };
     S.reglas.reglasUsuario = S.reglas.reglasUsuario || {}; S.reglas.palabras = S.reglas.palabras || []; S.reglas.importes = S.reglas.importes || [];
@@ -431,7 +433,19 @@
     return out.reverse(); // lo más reciente primero
   }
   function enlazarDevol(b, g) { S.devol[b.id] = g.id; delete S.devolNo[b.id]; guardar(); }
-  const esGrande = (m, c) => c.cuentaComoGasto && -m.importe >= GRANDE && !deFijo(m) && variable(m, c) > 0;
+  // Extras (v0.5.0): lo extraordinario no cuenta en tu mes típico ni en tus topes, aunque salga de tu saldo.
+  // Son extras: un gasto de 200 € o más, la categoría Viajes, lo que gastas en las fechas de un viaje
+  // y lo que marcas tú como «algo puntual» (S.extras[id]).
+  const enViaje = (m) => (S.viajes || []).find((v) => { const f = m.fechaValor || m.fecha; return f >= v.desde && f <= v.hasta; });
+  function motivoExtra(m, c) {
+    if (!c.cuentaComoGasto || deFijo(m) || variable(m, c) <= 0) return null;
+    if (S.extras && S.extras[m.id]) return 'Lo marcaste como algo puntual';
+    const v = enViaje(m); if (v) return 'Es de tu viaje «' + v.nombre + '»';
+    if (c.categoria === 'Viajes') return 'Es de la categoría Viajes';
+    if (-m.importe >= GRANDE) return 'Es un gasto de ' + GRANDE + ' € o más';
+    return null;
+  }
+  const esGrande = (m, c) => !!motivoExtra(m, c);
   function nombreMov(m) {
     // Lo que llega de BBVA conectado viene como «TIPO // SUBTIPO // COMERCIO»: el nombre es la última parte
     const partes = String(m.concepto || '').split(' // ');
@@ -515,22 +529,29 @@
     const meses = [...new Set(S.movs.map((m) => m.fecha.slice(0, 7)))].sort();
     return meses.length > 2 ? meses.slice(1, -1) : [];
   }
-  // Gasto variable de los meses completos: media por categoría, grandes aparte
+  // Tu mes típico: por categoría, la MEDIANA de los meses completos (un mes raro no la mueve). Los extras, aparte.
   function habitos() {
     const comp = mesesCompletos(); const set = new Set(comp);
-    const porCat = {}; let total = 0, grandes = 0; const lista = [];
+    const porMes = {}; let grandes = 0; const lista = [];
     const sem = [0, 0, 0, 0, 0, 0, 0];
     for (const m of S.movs) {
-      if (!set.has(m.fecha.slice(0, 7))) continue;
+      const ym = m.fecha.slice(0, 7);
+      if (!set.has(ym)) continue;
       const c = cat(m); const v = variable(m, c);
       if (v <= 0) continue;
       if (esGrande(m, c)) { grandes += v; lista.push(m); continue; }
-      total += v; porCat[c.categoria] = (porCat[c.categoria] || 0) + v;
+      porMes[c.categoria] = porMes[c.categoria] || {}; porMes[c.categoria][ym] = (porMes[c.categoria][ym] || 0) + v;
       // Fecha valor: BBVA apunta el lunes las compras del finde
       sem[aDate(m.fechaValor || m.fecha).getDay()] += v;
     }
     const n = Math.max(1, comp.length);
-    Object.keys(porCat).forEach((k) => (porCat[k] = porCat[k] / n));
+    const porCat = {}; const mediaCat = {};
+    for (const [k, xs] of Object.entries(porMes)) {
+      porCat[k] = mediana(comp.map((ym) => xs[ym] || 0));
+      mediaCat[k] = comp.reduce((a, ym) => a + (xs[ym] || 0), 0) / n;
+      if (!(porCat[k] > 0)) delete porCat[k];
+    }
+    const total = Object.values(porCat).reduce((a, b) => a + b, 0) * n;
     // Peso de cada día de la semana (1 = un día medio)
     const cuenta = [0, 0, 0, 0, 0, 0, 0];
     for (const ym of comp) {
@@ -540,7 +561,7 @@
     const media = sem.map((t, i) => (cuenta[i] ? t / cuenta[i] : 0));
     const prom = media.reduce((a, b) => a + b, 0) / 7;
     const pesos = media.map((x) => (prom > 0 ? Math.max(0.5, Math.min(2, x / prom)) : 1));
-    return { meses: comp, normal: total / n, grandes: grandes / n, porCat, pesos, hay: comp.length > 0 };
+    return { meses: comp, normal: total / n, grandes: grandes / n, porCat, mediaCat, pesos, hay: comp.length > 0 };
   }
   function plan(inicio, fin, H) {
     H = H || habitos();
@@ -1054,7 +1075,7 @@
     </div>
     ${tarjetaPlazos(plazosNuevos())}
     ${sug.length ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.repeat, titulo: sug.length === 1 ? 'Un pago se repite cada mes' : sug.length + ' pagos se repiten cada mes', sub: '¿Son pagos fijos? Un toque y los apunto', subStyle: 'color:var(--butter-d)' }) : ''}
-    ${grandes.length ? `<div class="card" style="background:var(--lilac);border:0;color:var(--lilac-d)"><b>${grandes.length === 1 ? 'Un gasto grande' : grandes.length + ' gastos grandes'}</b><p class="small" style="margin:4px 0 0;line-height:1.45">${grandes.map(([m]) => esc(nombreMov(m)) + ' · ' + eur(-m.importe)).join('<br>')}<br>No cuentan como gasto normal, pero se comen lo que te sobra.</p></div>` : ''}
+    ${grandes.length ? `<div class="card" style="background:var(--lilac);border:0;color:var(--lilac-d)"><b>${grandes.length === 1 ? 'Un extra' : grandes.length + ' extras'}</b><p class="small" style="margin:4px 0 0;line-height:1.45">${grandes.map(([m]) => esc(nombreMov(m)) + ' · ' + eur(-m.importe)).join('<br>')}<br>No cuentan en tu mes típico, pero salen de tu saldo.</p></div>` : ''}
     ${top.length ? `<div class="h2">En qué se fue</div>
     ${top.map(([k, v], i) => `<div style="margin-bottom:10px"><div class="row" style="font-size:14px;margin-bottom:5px"><span>${esc(k)}</span><span class="num">${eur(v)}</span></div><div class="bar l" style="height:6px"><i style="width:${Math.round(v / max * 100)}%;background:${BARRAS[i % BARRAS.length]}"></i></div></div>`).join('')}` : ''}
     ${apart || resc ? `<div class="card dash" style="color:#4A2E3C;margin-top:14px;display:flex;flex-direction:column;gap:6px">
@@ -1078,6 +1099,17 @@
       subStyle: 'color:var(--sky-d)' });
   }
 
+  // Viaje en Inicio: el que estás haciendo o el que empieza en 3 días; si no, el acceso a «Me voy de viaje»
+  function tarjetaViaje(c) {
+    const hoy = hoyIso();
+    const v = (S.viajes || []).filter((x) => x.hasta >= hoy && x.desde <= masDias(hoy, 3)).sort((a, b) => a.desde.localeCompare(b.desde))[0];
+    if (!v) return '';
+    const gasto = S.movs.filter((m) => enViaje(m) === v).reduce((a, m) => a + Math.max(0, variable(m, cat(m))), 0);
+    const ya = v.desde <= hoy;
+    return linkCard({ href: '#presupuesto', style: 'background:var(--lilac)', icStyle: 'color:var(--lilac-d)', icon: IC.plane,
+      titulo: ya ? `De viaje: ${esc(v.nombre)}` : `Te vas a ${esc(v.nombre)} ${cuando(v.desde)}`,
+      sub: ya ? `Llevas ${eur(gasto)} · va a extras, no toca tu día a día` : `Del ${fmtF(v.desde)} al ${fmtF(v.hasta)} · lo de esos días irá a extras`, subStyle: 'color:var(--lilac-d)' });
+  }
   // Tarjeta de BBVA en Inicio: cambia mientras actualiza y dice cómo fue
   function tarjetaSync() {
     const R = banco.resultado; const reciente = R && R.ok && Date.now() - R.t < 60000;
@@ -1143,12 +1175,15 @@
     ${plz.length > 1 ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.card, titulo: `${plz.length} cargos de pago a plazos`, sub: [...new Set(plz.map((p) => p.prov))].join(', ') + ' · ¿cuántas cuotas quedan?', subStyle: 'color:var(--butter-d)' }) : tarjetaPlazos(plz)}
     ${tarjetaDevol()}
     ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:#5A4238' }) : ''}
-    ${linkCard({ href: '#semana', style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.cal, titulo: 'Tu semana en 1 minuto', sub: (!S.semanaVista || dias(S.semanaVista, hoyIso()) >= 6) ? '4 tarjetas. Sin Excel, sin cuentas.' : 'Ya la has visto esta semana', subStyle: 'color:#3B4A43' })}`;
+    ${tarjetaViaje(c)}
+    ${linkCard({ href: '#semana', style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.cal, titulo: 'Tu semana en 1 minuto', sub: (!S.semanaVista || dias(S.semanaVista, hoyIso()) >= 6) ? '4 tarjetas. Sin Excel, sin cuentas.' : 'Ya la has visto esta semana', subStyle: 'color:#3B4A43' })}
+    <button type="button" class="cq-pill" id="bViaje" style="width:100%;border-style:dashed;font:inherit;cursor:pointer;background:#fff"><span class="ic" style="background:var(--lilac);color:var(--lilac-d)">${IC.plane}</span><b>Me voy de viaje</b><span class="cnt" style="background:var(--lilac);color:var(--lilac-d)">a extras</span>${IC.chev}</button>`;
   };
 
   /* ---------- Brisa te recomienda (v0.4.9) ---------- */
   // Consejos calculados en el móvil con tus propios datos, sin IA ni internet.
   // S.consejos = { no: {clave: fecha}, tipoNo: {tipo: true}, cancelados: {grupo: {fecha, importe, nombre}} }
+  IC.plane = ic2('M10.5 4.5l1.5-1.5 1.5 1.5v5l7 4v2l-7-2v4l2 1.5v1.5l-3.5-1-3.5 1V19l2-1.5v-4l-7 2v-2l7-4z', '<path d="M10.5 4.5l1.5-1.5 1.5 1.5v5l7 4v2l-7-2v4l2 1.5v1.5l-3.5-1-3.5 1V19l2-1.5v-4l-7 2v-2l7-4z"/>');
   IC.trend = ic2('M4 17.5l5.5-5.5 3.5 3.5L20 8v9.5z', '<path d="M4 17.5l5.5-5.5 3.5 3.5L20 8"/><path d="M15 8h5v5"/>');
   IC.receipt = ic2('M6 3.5h12v17l-3-2-3 2-3-2-3 2z', '<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12.5h6"/>');
   IC.house = ic2('M5 10.5 12 4.5l7 6V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19z', '<path d="M5 10.5 12 4.5l7 6V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19z"/><path d="M10 20.5v-5h4v5"/>');
@@ -1316,7 +1351,7 @@
     return `${ahoraTxt}
       <div class="ys-t"><span></span><span class="xs muted">Sin él</span><span class="xs muted">Con él</span></div>
       ${filas.map((f) => `<div class="ys-t"><span>${f.mes.charAt(0).toUpperCase() + f.mes.slice(1)}</span><span class="num">${eur(f.sin)}</span><span class="num" style="color:${f.con < 0 ? 'var(--berry)' : 'var(--mint-d)'}">${f.con < 0 ? '−' + eur(-f.con) : eur(f.con)}</span></div>`).join('')}
-      <p class="small" style="line-height:1.5;margin:10px 0 0">${ult.con >= 0 ? `Con tu gasto normal (${eur(c.P.normal)} al mes) te sobrarían unos <b>${eur(ult.con)} al mes</b>.` : `Con tu gasto normal (${eur(c.P.normal)} al mes) <b>no te llega</b>: tendrías que gastar ${eur(-ult.con)} menos al mes.`}${e1 && meta ? ` «${esc(meta.nombre)}»: ${e2 ? (e1 === e2 ? 'lista en ' + e2 + ', igual que sin él' : 'lista en ' + e2 + ' en vez de ' + e1) : 'sin fecha, porque no te sobraría nada'}.` : ''}</p>
+      <p class="small" style="line-height:1.5;margin:10px 0 0">${ult.con >= 0 ? `Con tu mes típico (${eur(c.P.normal)} al mes) te sobrarían unos <b>${eur(ult.con)} al mes</b>.` : `Con tu mes típico (${eur(c.P.normal)} al mes) <b>no te llega</b>: tendrías que gastar ${eur(-ult.con)} menos al mes.`}${e1 && meta ? ` «${esc(meta.nombre)}»: ${e2 ? (e1 === e2 ? 'lista en ' + e2 + ', igual que sin él' : 'lista en ' + e2 + ' en vez de ' + e1) : 'sin fecha, porque no te sobraría nada'}.` : ''}</p>
       <button type="button" class="btn small ghost" id="ysFijo" style="margin-top:12px">Apuntarlo en pagos fijos</button>`;
   }
   R.consejos = () => {
@@ -1435,7 +1470,7 @@
     const dif = d.gasto - d.gasto0;
     cards.push({ tag: 'ESTA SEMANA', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Gastaste<br>' + eur(d.gasto),
       b: (d.gasto0 > 0 ? (Math.abs(dif) < 5 ? 'Casi lo mismo que la semana anterior.' : dif < 0 ? `Son ${eur(-dif)} menos que la semana anterior. Vas en buena dirección.` : `Son ${eur(dif)} más que la semana anterior. Sin drama: miramos dónde.`) : 'Del ' + fmtF(d.ini) + ' al ' + fmtF(d.fin) + ', con la fecha real de cada compra.')
-        + (d.grandes.length ? ` Aparte, ${d.grandes.length === 1 ? 'un gasto grande' : d.grandes.length + ' gastos grandes'}: ${d.grandes.map((m) => esc(nombreMov(m)) + ' (' + eur(-m.importe) + ')').join(', ')}.` : ''),
+        + (d.grandes.length ? ` Aparte, ${d.grandes.length === 1 ? 'un extra' : d.grandes.length + ' extras'}: ${d.grandes.map((m) => esc(nombreMov(m)) + ' (' + eur(-m.importe) + ')').join(', ')}.` : ''),
       big: d.gasto0 > 0 ? ['La semana anterior', eur(d.gasto0)] : ['Tu ritmo semanal', eur(d.semanal)] });
     if (d.top) {
       const [k, v] = d.top;
@@ -1547,8 +1582,68 @@
   const AJUSTABLES = { 'Comer fuera': 'Lo más fácil de ajustar', 'Transporte': 'Algún Uber menos, más metro', 'Compras': 'Antes de pagar, ¿me lo compro?',
     'Ocio y planes': 'Elige los planes que más te llenan', 'Cuidado personal': 'Lo justo, sin caprichos de impulso', 'Estanco': 'Un paquete menos a la semana', 'Otra cuenta': 'Menos recargas a Revolut' };
   function sugeridos(H, r) {
-    return Object.entries(H.porCat).filter(([k]) => AJUSTABLES[k]).sort((a, b) => b[1] - a[1]).slice(0, 3)
-      .map(([k, v]) => ({ cat: k, media: v, tope: Math.round(v * (1 - r)), why: AJUSTABLES[k] }));
+    return Object.entries(H.porCat).filter(([k, v]) => k !== 'Por revisar' && v >= 5).sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => ({ cat: k, media: v, tope: Math.round(v * (1 - r)), why: AJUSTABLES[k] || '' }));
+  }
+  /* ---------- Extras y viajes (v0.5.0) ---------- */
+  // ¿Una categoría se ha disparado este ciclo? Se pregunta si fue algo puntual
+  function puntual(c) {
+    return Object.entries(c.porCat).map(([k, act]) => ({ k, act, typ: c.H.porCat[k] || 0 }))
+      .filter((x) => x.k !== 'Por revisar' && c.H.hay && x.act >= Math.max(x.typ * 1.6, x.typ + 25) && !S.puntualNo[x.k + '|' + c.fin])
+      .sort((a, b) => (b.act - b.typ) - (a.act - a.typ))[0] || null;
+  }
+  function tarjetaPuntual(c) {
+    const x = puntual(c); if (!x) return '';
+    return `<section class="card puntual">
+      <div class="pix lab">¿FUE ALGO PUNTUAL?</div>
+      <b>${esc(x.k)}: ${eur(x.act)} (lo típico, ${eur(x.typ)})</b>
+      <p class="small">Si fue un cumpleaños, un plan especial o algo que no se repite, lo paso a extras y no cuenta en tu mes típico.</p>
+      <div class="rec-b"><button type="button" class="btn small ghost" data-pun="no" data-k="${esc(x.k)}">No, es lo normal</button><button type="button" class="btn small" data-pun="si" data-k="${esc(x.k)}">Sí, fue puntual</button></div>
+    </section>`;
+  }
+  function marcarPuntual(k) {
+    const c = ciclo(); const typ = c.H.porCat[k] || 0;
+    const ms = S.movs.filter((m) => m.fecha >= c.inicio && m.importe < 0).map((m) => [m, cat(m)])
+      .filter(([m, x]) => x.categoria === k && !esGrande(m, x) && variable(m, x) > 0).sort((a, b) => variable(b[0], b[1]) - variable(a[0], a[1]));
+    // Pasan a extras los gastos más grandes, hasta que la categoría vuelve a lo típico
+    let resto = c.porCat[k] || 0; let n = 0;
+    for (const [m, x] of ms) { if (resto <= typ) break; S.extras[m.id] = true; resto -= variable(m, x); n++; }
+    S.puntualNo[k + '|' + c.fin] = true;
+    guardar(); render(); toast(n ? `${n} ${n === 1 ? 'gasto pasa' : 'gastos pasan'} a extras` : 'Hecho');
+  }
+  function seccionExtras(c) {
+    const grupos = {};
+    for (const m of c.grandes) {
+      const v = enViaje(m); const k = v ? 'v|' + v.id : 'm|' + nombreMov(m);
+      grupos[k] = grupos[k] || { t: v ? '✈ ' + esc(v.nombre) + ' · ' + fmtF(v.desde) + (v.hasta !== v.desde ? ' – ' + fmtF(v.hasta) : '') : esc(nombreMov(m)), imp: 0, n: 0, viaje: !!v };
+      grupos[k].imp += variable(m, cat(m)); grupos[k].n++;
+    }
+    const lista = Object.values(grupos).sort((a, b) => b.imp - a.imp);
+    const total = lista.reduce((a, g) => a + g.imp, 0);
+    const viajes = (S.viajes || []).filter((v) => v.hasta >= masDias(hoyIso(), -45)).sort((a, b) => a.desde.localeCompare(b.desde));
+    return `<div class="row" style="align-items:baseline;margin:20px 0 10px"><span class="h2" style="margin:0">Extras de este mes</span><span class="num" style="color:var(--lilac-d)">${eur(total)}</span></div>
+    <section class="card extras">
+      ${lista.length ? lista.map((g) => `<div class="row small" style="min-height:34px;border-bottom:1px solid #E3D6F6"><span>${g.t}${!g.viaje && g.n > 1 ? ' <span class="xs">· ' + g.n + ' veces</span>' : ''}</span><span class="num">${eur(g.imp)}</span></div>`).join('') : '<p class="small" style="margin:0">Este mes aún no hay extras.</p>'}
+      <p class="xs" style="margin:8px 0 0;line-height:1.45">Salen de tu saldo, pero no cuentan en tu mes típico ni en tus topes.${c.P.grandes > 0 ? ` Te cuestan unos <b>${eur(c.P.grandes)} al mes</b> de media.` : ''}</p>
+      ${viajes.length ? `<div style="margin-top:10px">${viajes.map((v) => `<div class="row small" style="min-height:40px"><span>✈ ${esc(v.nombre)} · ${fmtF(v.desde)}${v.hasta !== v.desde ? ' – ' + fmtF(v.hasta) : ''}</span><button type="button" class="icon-btn sm" style="border:0;background:transparent" data-vx="${esc(v.id)}" aria-label="Quitar el viaje ${esc(v.nombre)}">${IC.close}</button></div>`).join('')}</div>` : ''}
+    </section>
+    <button type="button" class="btn ghost small" id="bViaje" style="margin:4px auto 0">${IC.plane.replace('<svg', '<svg width="18" height="18"')} Me voy de viaje</button>`;
+  }
+  function nuevoViaje() {
+    const hoy = hoyIso();
+    $sheet.innerHTML = `<div class="num" style="font-size:20px;margin-bottom:4px">Me voy de viaje</div>
+      <p class="small muted" style="margin:0 0 12px;line-height:1.5">Lo que gastes esos días va a extras: no toca tu mes típico ni tus corazones del día a día. Lo que pagaste antes (el alojamiento, un Bizum…) márcalo como «algo puntual» en Movimientos.</p>
+      <form id="sForm"><label class="field">¿Adónde?<input name="n" placeholder="Valencia" autocomplete="off"></label>
+      <div class="tiles" style="margin-bottom:0"><label class="field">Desde<input name="d" type="date" value="${hoy}" required></label><label class="field">Hasta<input name="h" type="date" value="${masDias(hoy, 2)}" required></label></div>
+      <div class="btns"><button type="button" class="btn ghost" id="sCancel">Cancelar</button><button class="btn" type="submit">Guardar</button></div></form>`;
+    $sheet.onclick = (e) => { if (e.target.closest('#sCancel') || e.target === $sheet) $sheet.close(); };
+    $sheet.querySelector('#sForm').onsubmit = (e) => {
+      e.preventDefault(); const t = e.target; const F = (n) => t.querySelector('[name="' + n + '"]').value;
+      let d = F('d'), h = F('h'); if (!d || !h) return; if (h < d) [d, h] = [h, d];
+      S.viajes.push({ id: 'v' + Date.now(), nombre: F('n').trim() || 'Viaje', desde: d, hasta: h });
+      guardar(); $sheet.close(); render(); toast('¡Buen viaje! Lo de esos días va a extras');
+    };
+    $sheet.showModal();
   }
   R.presupuesto = () => {
     const c = ciclo(); const P = c.P; const H = c.H;
@@ -1566,10 +1661,9 @@
       <span class="num" style="font-size:17px">Lo que puedes ahorrar</span>
       <div class="ln"><span>Cobras<br><span class="xs muted">${P.deNomina ? 'Tu nómina, sacada del Excel' : 'Lo que pusiste en Ajustes'}</span></span><span class="num" style="color:var(--mint-d)">+${eur(P.cobras)}</span></div>
       <div class="ln"><span><a href="#fijos" style="color:inherit">Pagos fijos</a><br><span class="xs muted">${S.fijos.length ? 'Los de tu lista que caen este mes' : 'El aproximado de Ajustes'}</span></span><span class="num" style="color:var(--berry)">−${eur(P.fijos)}</span></div>
-      <div class="ln"><span>Tu gasto normal<br><span class="xs muted">${H.hay ? 'La media de tus ' + H.meses.length + ' meses completos' : 'Aún no hay un mes completo: es una estimación'}</span></span><span class="num" style="color:var(--berry)">−${eur(P.normal)}</span></div>
+      <div class="ln"><span>Tu mes típico<br><span class="xs muted">${H.hay ? 'Lo habitual, sin viajes ni extras' : 'Aún no hay un mes completo: es una estimación'}</span></span><span class="num" style="color:var(--berry)">−${eur(P.normal)}</span></div>
       <div style="border-top:1.5px dashed var(--rose3)"></div>
       <div class="ln"><b>${P.sobra >= 0 ? 'Te sobran al mes' : 'Te faltan al mes'}</b><span class="num" style="color:${P.sobra >= 0 ? 'var(--mint-d)' : 'var(--berry)'}">${eur(Math.abs(P.sobra))}</span></div>
-      ${P.grandes > 0 ? `<div style="background:var(--lilac);border-radius:16px;padding:10px 14px;line-height:1.5;color:var(--lilac-d)" class="small">Aparte, los gastos grandes de más de ${GRANDE} € te han costado <b>${eur(P.grandes)} al mes</b> de media. No cuentan como gasto normal, pero se comen lo que te sobra.</div>` : ''}
     </section>
     <div class="h2">¿A qué ritmo ahorras?</div>
     <div class="seg" role="group" aria-label="Ritmo de ahorro">${ritmoBotones(P.ritmo, 'data-ritmo2')}</div>
@@ -1589,16 +1683,23 @@
       </div>
       <span class="small" style="line-height:1.5">Lo que sueles gastar cada día, con la fecha real de la compra. ${habitoFinde(H).replace(/^./, (x) => x.toUpperCase())} Tu número del día sigue este patrón.</span>
     </section>` : ''}
-    ${sug.length ? `<div class="h2">Ajustes sugeridos</div>
-    ${sug.map((a, i) => `<div class="card row" style="border-radius:20px;padding:12px 16px;margin-bottom:8px"><span class="dot" style="background:${BARRAS[(i + 4) % BARRAS.length]}"></span><span style="display:flex;flex-direction:column;gap:2px;flex-grow:1"><b style="font-size:15px;font-weight:600">${esc(a.cat)}</b><span class="xs muted">${esc(a.why)}</span></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px"><span class="num" style="font-size:16px">${eur(a.tope)}</span><span class="xs muted">media ${eur(a.media)}</span></span></div>`).join('')}
-    <button class="btn" id="bAplicar" style="margin-top:6px">Aplicar este presupuesto</button>
+    ${sug.length ? `<div class="h2">Tu mes típico</div>
+    <section class="card" style="border-radius:24px;padding:12px 16px">
+      <div class="tip-r xs muted"><span></span><span>Típico</span><span>Tu tope</span></div>
+      ${sug.map((a) => `<div class="tip-r"><span>${esc(a.cat)}</span><span class="num">${eur(a.media)}</span><span class="num" style="color:var(--berry)">${eur(a.tope)}</span></div>`).join('')}
+      <div class="tip-r" style="border:0;font-weight:800"><span>Total al mes</span><span class="num">${eur(sug.reduce((x, a) => x + a.media, 0))}</span><span class="num" style="color:var(--berry)">${eur(sug.reduce((x, a) => x + a.tope, 0))}</span></div>
+      <p class="xs muted" style="margin:6px 0 0;line-height:1.45">Lo típico es lo que gastas en un mes normal: un mes raro no lo mueve. Tu tope es un ${Math.round(r * 100)} % menos.</p>
+    </section>
+    <button class="btn" id="bAplicar" style="margin-top:2px">Aplicar este presupuesto</button>
     ${S.plan && S.plan.fecha ? `<p class="xs muted" style="text-align:center;margin:8px 0 0">Aplicado el ${fmtF(S.plan.fecha)} (${RITMOS[S.plan.ritmo] ? RITMOS[S.plan.ritmo].label.toLowerCase() : ''})</p>` : ''}` : ''}
     <div class="h2">Este mes, por categoría</div>
+    ${tarjetaPuntual(c)}
     ${filas.length ? `<div class="card">${filas.map(([k, avg], i) => {
       const act = c.porCat[k] || 0; const ref = topes[k] || avg; const pc = Math.min(100, Math.round(act / Math.max(ref, 1) * 100));
-      return `<div style="margin:6px 0 12px"><div class="row" style="font-size:14px;margin-bottom:5px"><span>${esc(k)}</span><span><span class="num">${eur(act)}</span> <span class="xs muted">/ ${topes[k] ? 'tope' : 'media'} ${eur(ref)}</span></span></div><div class="bar l" style="height:6px"><i style="width:${pc}%;background:${act > ref ? '#B03A72' : BARRAS[i % BARRAS.length]}"></i></div></div>`;
+      return `<div style="margin:6px 0 12px"><div class="row" style="font-size:14px;margin-bottom:5px"><span>${esc(k)}</span><span><span class="num">${eur(act)}</span> <span class="xs muted">/ ${topes[k] ? 'tope' : 'típico'} ${eur(ref)}</span></span></div><div class="bar l" style="height:6px"><i style="width:${pc}%;background:${act > ref ? '#B03A72' : BARRAS[i % BARRAS.length]}"></i></div></div>`;
     }).join('')}</div>` : '<div class="empty">Cuando tengas un mes completo verás aquí tus categorías.</div>'}
-    <p class="xs muted">La media sale de tus meses completos, sin los gastos grandes. Lo que está en tus pagos fijos no cuenta aquí: ya está reservado.</p>`;
+    <p class="xs muted">Lo que está en tus pagos fijos no cuenta aquí: ya está reservado. Los extras van aparte.</p>
+    ${seccionExtras(c)}`;
   };
   function aplicarPresupuesto() {
     const c = ciclo(); const P = c.P;
@@ -1784,6 +1885,13 @@
   };
 
   /* ---------- Hoja para cambiar la categoría ---------- */
+  function botonExtra(m, c) {
+    if (m.importe >= 0 || !c.cuentaComoGasto || deFijo(m) || variable(m, c) <= 0) return '';
+    if (S.extras[m.id]) return `<button class="btn ghost" id="sExtra" style="margin-top:12px">Ya no es algo puntual</button><p class="xs muted" style="margin:6px 0 0;text-align:center">Ahora está en extras: no cuenta en tu mes típico.</p>`;
+    const mot = motivoExtra(m, c);
+    if (mot) return `<p class="small" style="margin:12px 0 0;background:var(--lilac);color:var(--lilac-d);border-radius:14px;padding:8px 12px">Cuenta como extra: ${esc(mot.charAt(0).toLowerCase() + mot.slice(1))}.</p>`;
+    return `<button class="btn ghost" id="sExtra" style="margin-top:12px">${IC.plane.replace('<svg', '<svg width="18" height="18" style="vertical-align:-4px;margin-right:6px;color:var(--lilac-d)"')}Es algo puntual (pasa a extras)</button>`;
+  }
   function abrirMov(id) {
     const m = S.movs.find((x) => x.id === id); if (!m) return;
     const c = cat(m);
@@ -1811,6 +1919,7 @@
         <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">${esc(nombreMov(m))}</div><div class="small muted">${fmtF(m.fecha)} · ${eur(m.importe, true)}</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
         ${c.motivo ? `<p class="xs muted" style="margin:8px 0 0">${esc(c.motivo)}</p>` : ''}
         ${dev ? `<div class="card" style="background:var(--sky);border:0;margin:12px 0 0;padding:10px 16px;color:var(--sky-d)"><div class="row small"><span>Te devolvieron ${eur(dev, true)} por Bizum</span><span>${tuParte(m)}</span></div></div>` : ''}
+        ${botonExtra(m, c)}
         ${esBizumRecibido(m) ? `<button class="btn ghost" id="sEsDevol" style="margin-top:12px">${IC.split.replace('<svg', '<svg width="18" height="18" style="vertical-align:-4px;margin-right:6px;color:var(--sky-d)"')}Es una devolución de…</button>` : ''}
         <div class="cats">${ELEGIBLES.map((k) => `<button data-cat="${esc(k)}" aria-pressed="${elegida === k}"><span class="dot" style="background:${COLORES[k]};border:1px solid #E8D5DC"></span>${esc(k)}</button>`).join('')}</div>
         <label class="check"><input type="checkbox" id="sRecordar" checked> Recordarlo para los parecidos</label>
@@ -1822,6 +1931,10 @@
       if (b) { elegida = b.dataset.cat; const r = $sheet.querySelector('#sRecordar').checked; dibujar(); $sheet.querySelector('#sRecordar').checked = r; return; }
       if (e.target.closest('#sCerrar') || e.target === $sheet) { $sheet.close(); return; }
       if (e.target.closest('#sEsDevol')) { elegirGasto(m); return; }
+      if (e.target.closest('#sExtra')) {
+        if (S.extras[m.id]) { delete S.extras[m.id]; toast('Vuelve a contar como gasto normal'); } else { S.extras[m.id] = true; toast('Pasa a extras: no cuenta en tu mes típico'); }
+        guardar(); $sheet.close(); render(); return;
+      }
       if (e.target.closest('#sGuardar') && elegida) {
         if ($sheet.querySelector('#sRecordar').checked) {
           const k = B.claveRegla(m); const prev = S.reglas.reglasUsuario[k];
@@ -2197,6 +2310,12 @@
     if (q('#bMas')) q('#bMas').onclick = () => { verTodos += 60; render(); };
     $app.querySelectorAll('[data-ritmo2]').forEach((b) => b.onclick = () => { S.perfil.ritmo = b.dataset.ritmo2; guardar(); render(); });
     if (q('#bAplicar')) q('#bAplicar').onclick = aplicarPresupuesto;
+    if (q('#bViaje')) q('#bViaje').onclick = nuevoViaje;
+    $app.querySelectorAll('[data-vx]').forEach((b) => b.onclick = () => { S.viajes = S.viajes.filter((v) => v.id !== b.dataset.vx); guardar(); render(); toast('Viaje quitado'); });
+    $app.querySelectorAll('[data-pun]').forEach((b) => b.onclick = () => {
+      if (b.dataset.pun === 'si') marcarPuntual(b.dataset.k);
+      else { S.puntualNo[b.dataset.k + '|' + ciclo().fin] = true; guardar(); render(); toast('Vale, cuenta como lo normal'); }
+    });
     if (q('#bProximos')) q('#bProximos').onclick = abrirProximos;
     if (q('#bAjustarAhorro')) q('#bAjustarAhorro').onclick = () => {
       pedirNumero('¿Cuánto tienes hoy en tu cuenta de ahorro?', Math.round(ahorro().saldo), (v) => {

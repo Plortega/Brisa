@@ -198,6 +198,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.5.0 | 27 oct 2026 | Mes típico y extras: el presupuesto se calcula con la mediana de cada categoría (un mes raro no lo mueve); viajes, gastos de 200 € o más y lo marcado como «algo puntual» van a «Extras de este mes». «¿Fue algo puntual?» cuando una categoría se dispara. «Me voy de viaje» con fechas |
 | 0.4.11 | 27 oct 2026 | Consejos: solo cuentan como suscripción los cargos de 3 meses seguidos, el mismo día y el mismo importe, y nunca las compras del día a día (súper, bares, estanco, tiendas…) |
 | 0.4.10 | 27 oct 2026 | Actualizar con BBVA se ve: la tarjeta de Inicio pasa a «Actualizando…», luego «¡Listo! N movimientos nuevos» (verde) o el error en melocotón con «toca para reintentar» |
 | 0.4.9 | 27 oct 2026 | Brisa te recomienda: consejos automáticos en el móvil (ritmo del mes, categorías, subidas de precio, membresías que no usas, rescates, «te han vuelto a cobrar») y «¿Y si…?» para probar un gasto nuevo mes a mes |

@@ -182,3 +182,13 @@ div.aj-row{cursor:default}
 .ys-t>span:not(:first-child){text-align:right}
 .ys-now{display:flex;flex-direction:column;gap:2px;background:var(--mint);color:#22392E;border-radius:16px;padding:10px 14px;margin:8px 0 10px;font-size:13px;line-height:1.45}
 .ys-now.mal{background:var(--peach);color:#5A4238}
+/* v0.5.0 · mes típico, extras y viajes */
+.tip-r{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.8fr) minmax(0,.8fr);gap:6px;align-items:center;min-height:34px;font-size:14px;border-bottom:1px solid var(--line)}
+.tip-r>span:not(:first-child){text-align:right}
+.puntual{background:#EAF2FB;border:1px solid #B5D4F4;color:var(--ink)}
+.puntual .lab{font-size:12px;letter-spacing:.8px;color:var(--sky-d)}
+.puntual b{display:block;margin-top:2px}
+.puntual .small{color:var(--sky-d);line-height:1.45;margin:4px 0 0}
+.puntual .btn:not(.ghost){background:var(--sky-d)}
+.extras{background:#F4EEFC;border:1px solid #D9C8F3;color:var(--lilac-d)}
+.icon-btn.sm{width:36px;height:36px}
