@@ -1,9 +1,9 @@
-/* Brisa · v0.4.8 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.4.9 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.4.8';
+  const VERSION_APP = '0.4.9';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -86,6 +86,8 @@
     S.reservas = S.reservas || []; S.deseos = S.deseos || [];
     // v0.4.8: devoluciones por Bizum
     S.devol = S.devol || {}; S.devolNo = S.devolNo || {};
+    // v0.4.9: Brisa te recomienda
+    S.consejos = S.consejos || {}; ['no', 'tipoNo', 'cancelados'].forEach((k) => (S.consejos[k] = S.consejos[k] || {}));
     S.reglas = S.reglas || { reglasUsuario: {}, palabras: [], importes: [] };
     S.reglas.reglasUsuario = S.reglas.reglasUsuario || {}; S.reglas.palabras = S.reglas.palabras || []; S.reglas.importes = S.reglas.importes || [];
     if (S.perfil && !RITMOS[S.perfil.ritmo]) S.perfil.ritmo = 'equilibrado';
@@ -1100,6 +1102,7 @@
       <div class="row small" style="color:#6A3A50;margin-top:8px"><span style="white-space:nowrap">Te quedan ${n} de 10 ♡ · ${eur(c.libre)}</span><span style="white-space:nowrap">Hasta el ${aDate(c.fin).getDate()} · ${c.restantes} días</span></div>
     </section>
     <a class="cq-pill" href="#comprar"><span class="ic">${IC.bag}</span><b>¿Me lo compro?</b>${S.deseos.length ? `<span class="cnt">${S.deseos.length} ${S.deseos.length === 1 ? 'deseo' : 'deseos'}</span>` : ''}${IC.chev}</a>
+    ${tarjetaConsejo()}
     ${S.deseos.filter((d) => estadoDeseo(c, d.importe).cabe).slice(0, 1).map((d) => linkCard({ attrs: `data-deseo="${esc(d.id)}"`, style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.bag,
       titulo: `Ya cabe: ${esc(d.nombre)} (${eur(d.importe)})`, sub: 'Está en tu lista de deseos · toca para decidir', subStyle: 'color:var(--mint-d)' })).join('')}
     ${faltanFijos() ? linkCard({ href: '#fijos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Faltan tus pagos fijos', sub: 'Sin ellos tu número del día sale más alto de lo real. Añádelos o cárgalos desde Ajustes', subStyle: 'color:#5A4238' }) : ''}
@@ -1118,6 +1121,210 @@
     ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:#5A4238' }) : ''}
     ${linkCard({ href: '#semana', style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.cal, titulo: 'Tu semana en 1 minuto', sub: (!S.semanaVista || dias(S.semanaVista, hoyIso()) >= 6) ? '4 tarjetas. Sin Excel, sin cuentas.' : 'Ya la has visto esta semana', subStyle: 'color:#3B4A43' })}`;
   };
+
+  /* ---------- Brisa te recomienda (v0.4.9) ---------- */
+  // Consejos calculados en el móvil con tus propios datos, sin IA ni internet.
+  // S.consejos = { no: {clave: fecha}, tipoNo: {tipo: true}, cancelados: {grupo: {fecha, importe, nombre}} }
+  IC.trend = ic2('M4 17.5l5.5-5.5 3.5 3.5L20 8v9.5z', '<path d="M4 17.5l5.5-5.5 3.5 3.5L20 8"/><path d="M15 8h5v5"/>');
+  IC.receipt = ic2('M6 3.5h12v17l-3-2-3 2-3-2-3 2z', '<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12.5h6"/>');
+  IC.house = ic2('M5 10.5 12 4.5l7 6V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19z', '<path d="M5 10.5 12 4.5l7 6V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19z"/><path d="M10 20.5v-5h4v5"/>');
+  IC.pie = ic2('M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12z', '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12h8.5"/>');
+  // Mismo comercio aunque cambie la referencia: «Spotifyes» y «Spotify P47E…» son el mismo grupo
+  // (con el concepto en bruto: el limpiador corta tras varios espacios y «Uber   *one» quedaría en «uber»)
+  const RUIDO = new Set(['www', 'com', 'es', 'help', 'sl', 'sa', 'eu', 'pago', 'payments']);
+  function palabrasGrupo(m) {
+    const partes = String(m.concepto || '').split(' // ');
+    const bruto = (partes.length > 2 ? partes[partes.length - 1] : m.concepto || '').replace(/\s{5,}.*$/, '');
+    return bruto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[*./_-]/g, ' ')
+      .split(/\s+/).filter((x) => x && !/\d/.test(x)).map((x) => x.replace(/[^a-zñ]/g, ''))
+      .filter((x, i, a) => x.length >= 2 && !RUIDO.has(x) && x !== a[i - 1]).slice(0, 3);
+  }
+  const claveGrupo = (m) => palabrasGrupo(m).map((x) => x.slice(0, 7)).join(' ');
+  // «Klarna*klarna member» → «Klarna member»
+  function nombreGrupo(m) {
+    const n = palabrasGrupo(m).join(' ');
+    return n.length >= 3 ? n.charAt(0).toUpperCase() + n.slice(1) : nombreMov(m);
+  }
+  // Cargos que se repiten una vez al mes (suscripciones y parecidos), sin plazos ni Bizum
+  function recurrentes() {
+    const g = {}; const desde = masDias(hoyIso(), -200); const rePlz = new RegExp(PLZ_BUSCA, 'i');
+    for (const m of S.movs) {
+      if (m.importe >= 0 || m.fecha < desde || -m.importe > 120 || /^bizum/i.test(m.concepto)) continue;
+      if (rePlz.test(B.limpiar(m.concepto + ' ' + m.tipo))) continue;
+      if (!cat(m).cuentaComoGasto || (S.fijos || []).some((x) => esCuotas(x) && encajaFijo(x, m))) continue;
+      const k = claveGrupo(m); if (k) (g[k] = g[k] || []).push(m);
+    }
+    const out = [];
+    for (const [k, ms] of Object.entries(g)) {
+      ms.sort((a, b) => a.fecha.localeCompare(b.fecha));
+      if (ms.length < 2 || new Set(ms.map((m) => m.fecha.slice(0, 7))).size < ms.length) continue;
+      if (!ms.slice(1).every((m, i) => { const d = dias(ms[i].fecha, m.fecha); return d >= 20 && d <= 40; })) continue;
+      out.push({ clave: k, nombre: nombreGrupo(ms[ms.length - 1]), movs: ms, ultimo: ms[ms.length - 1] });
+    }
+    return out;
+  }
+  // Membresías que solo compensan si las usas
+  const MEMBRESIAS = [
+    { es: /uber.*one/, uso: /uber.*(eats|trip|rides)/, nombre: 'Uber One' },
+    { es: /glovo.*prime/, uso: /glovo(?!.*prime)/, nombre: 'Glovo Prime' },
+    { es: /just ?eat.*(plus|\+)/, uso: /just ?eat(?!.*(plus|\+))/, nombre: 'Just Eat+' },
+    { es: /cabify.*(club|plus)/, uso: /cabify(?!.*(club|plus))/, nombre: 'Cabify' }
+  ];
+  function consejos(todos) {
+    const C = S.consejos; const hoy = hoyIso(); const L = [];
+    if (!S.movs.length) return L;
+    const c = ciclo();
+    const transcurridos = Math.max(1, dias(c.inicio, hoy));
+    const dCobro = aDate(c.fin).getDate();
+    // 1 · Ritmo del ciclo
+    if (c.modoSaldo && c.disponible < 0) {
+      L.push({ clave: 'ritmo|' + c.fin, tipo: 'ritmo', prio: 100, aviso: true, icon: IC.alert, etiqueta: 'AVISO',
+        titulo: c.saldo < 0 ? `Quedan ${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} y vas en ${eur(c.saldo)}` : 'Tus pagos pendientes superan tu saldo',
+        sub: (c.pendiente > 0 && c.saldo < 0 ? `Y aún faltan ${eur(c.pendiente)} de pagos fijos. ` : '') + (c.restantes <= 7
+          ? 'Hasta el cobro, solo lo imprescindible. Lo que no gastes ahora, no se lo debes al mes que viene.'
+          : `Mira qué puedes parar o retrasar hasta el día ${dCobro}.`),
+        corto: 'Hasta el cobro, solo lo imprescindible', acciones: [['ok', 'Entendido', 1]] });
+    } else if (transcurridos >= 5) {
+      const ritmoDia = c.gastado / transcurridos;
+      const base = c.modoSaldo ? c.disponible : c.queda - c.reservado;
+      const proy = base - ritmoDia * c.restantes;
+      if (proy < -20) L.push({ clave: 'ritmo|' + c.fin, tipo: 'ritmo', prio: 90, aviso: true, icon: IC.alert, etiqueta: 'AVISO',
+        titulo: `A este ritmo acabas en −${eur(-proy)}`,
+        sub: `Vas gastando unos ${eur(ritmoDia)} al día. Para llegar al ${dCobro}, como mucho ${eur(c.libre / c.restantes)} al día.`,
+        corto: `Para llegar, como mucho ${eur(c.libre / c.restantes)} al día`, acciones: [['ok', 'Entendido', 1]] });
+    }
+    // 2 · Te han vuelto a cobrar algo que cancelaste
+    const rec = recurrentes();
+    for (const [k, x] of Object.entries(C.cancelados)) {
+      const g = rec.find((r) => r.clave === k) || { movs: S.movs.filter((m) => m.importe < 0 && claveGrupo(m) === k) };
+      const m = g.movs.find((mm) => (mm.fechaValor || mm.fecha) > masDias(x.fecha, 2));
+      if (m) L.push({ clave: 'recobro|' + k + '|' + m.id, tipo: 'recobro', prio: 80, aviso: true, icon: IC.alert, etiqueta: 'OJO',
+        titulo: `${esc(x.nombre)} te ha vuelto a cobrar`, sub: `${eur(-m.importe, true)} el ${fmtF(m.fecha)}. Lo marcaste como cancelado el ${fmtF(x.fecha)}: revisa que la baja se hizo.`,
+        corto: 'Revisa que la baja se hizo', acciones: [['ok', 'Lo miro', 1]] });
+    }
+    // 3 · Categorías que se pasan del tope (o de tu media) a mitad de mes
+    const topes = (S.plan && S.plan.topes) || {};
+    const largo = Math.max(1, dias(c.inicio, c.fin)); const frac = Math.min(1, transcurridos / largo);
+    const cats = Object.keys(AJUSTABLES).map((k) => {
+      const ref = topes[k] || c.H.porCat[k] || 0; const act = c.porCat[k] || 0;
+      if (ref < 20) return null;
+      if (act > ref && act - ref >= 10) return { k, ref, act, pasado: true, peso: act - ref };
+      if (frac < 0.8 && act >= ref * 0.5 && act > ref * frac * 1.3) return { k, ref, act, pasado: false, peso: act - ref * frac };
+      return null;
+    }).filter(Boolean).sort((a, b) => b.peso - a.peso).slice(0, 2);
+    for (const x of cats) L.push({ clave: 'cat|' + x.k + '|' + c.fin + '|' + (x.pasado ? 'p' : 'r'), tipo: 'categoria', prio: x.pasado ? 70 : 65, icon: IC.pie,
+      etiqueta: x.pasado ? 'TE HAS PASADO' : 'VA RÁPIDO',
+      titulo: x.pasado ? `${esc(x.k)}: ${eur(x.act)} de ${eur(x.ref)}` : `${esc(x.k)} va rápido`,
+      sub: x.pasado ? `Te has pasado ${eur(x.act - x.ref)} de tu ${topes[x.k] ? 'tope' : 'media'}. ${esc(AJUSTABLES[x.k])}.`
+        : `Llevas ${eur(x.act)} de ${eur(x.ref)} y quedan ${c.restantes} días. ${esc(AJUSTABLES[x.k])}.`,
+      corto: x.pasado ? `Te has pasado ${eur(x.act - x.ref)}` : `Llevas ${eur(x.act)} de ${eur(x.ref)}`,
+      acciones: [['ok', 'Entendido'], ['#presupuesto', 'Ver presupuesto', 1]] });
+    // 4 · Subidas de precio en cargos que se repiten
+    for (const r of rec) {
+      if (C.cancelados[r.clave]) continue;
+      const a = -r.movs[r.movs.length - 2].importe; const b = -r.ultimo.importe;
+      if (b > a * 1.15 && b - a >= 0.5 && dias(r.ultimo.fecha, hoy) <= 45) L.push({ clave: 'subida|' + r.clave + '|' + b, tipo: 'subida', prio: 60, icon: IC.trend, etiqueta: 'SUBIDA DE PRECIO',
+        grupo: r.clave, nombre: r.nombre, importe: b, mov: r.ultimo.id,
+        titulo: `${esc(r.nombre)} ha subido`, sub: `Pagabas ${eur(a, true)} y desde ${MESES_L[aDate(r.ultimo.fecha).getMonth()]} son ${eur(b, true)}. Son ${eur((b - a) * 12)} más al año.`,
+        corto: `De ${eur(a, true)} a ${eur(b, true)} al mes`, acciones: [['quedo', 'Me lo quedo'], ['cancel', 'Ya lo cancelé', 1]], nunca: true });
+    }
+    // 5 · Membresías que casi no usas (últimos 90 días)
+    const hace90 = masDias(hoy, -90);
+    for (const mb of MEMBRESIAS) {
+      const r = rec.find((x) => mb.es.test(x.clave)); if (!r || C.cancelados[r.clave]) continue;
+      const pagos = r.movs.filter((m) => m.fecha >= hace90); if (pagos.length < 2) continue;
+      const usos = S.movs.filter((m) => m.importe < 0 && m.fecha >= hace90 && mb.uso.test(claveGrupo(m)) && !mb.es.test(claveGrupo(m))).length;
+      if (usos > 3) continue;
+      const coste = pagos.reduce((s, m) => s - m.importe, 0);
+      L.push({ clave: 'uso|' + r.clave + '|' + hoy.slice(0, 7), tipo: 'uso', prio: 50, icon: IC.receipt, etiqueta: 'CASI NO LO USAS',
+        grupo: r.clave, nombre: mb.nombre, importe: -r.ultimo.importe, mov: r.ultimo.id,
+        titulo: `${mb.nombre}: ${eur(coste, true)} en 3 meses`, sub: `Lo pagas cada mes, pero solo lo has usado ${usos === 0 ? 'ninguna vez' : usos === 1 ? 'una vez' : usos + ' veces'}.`,
+        corto: `Solo lo has usado ${usos === 1 ? 'una vez' : usos + ' veces'} en 3 meses`, acciones: [['quedo', 'Me lo quedo'], ['cancel', 'Ya lo cancelé', 1]], nunca: true });
+    }
+    // 6 · Rescates por encima de tu límite
+    const usado = c.rescates - c.forzados;
+    if (usado > S.limiteRescates && S.limiteRescates > 0) L.push({ clave: 'resc|' + c.fin, tipo: 'rescates', prio: 40, icon: IC.uturn, etiqueta: 'RESCATES',
+      titulo: `Has rescatado ${eur(usado)} este mes`, sub: `Tu límite es ${eur(S.limiteRescates)}. Si te pasa cada mes, es mejor apartar menos y no tocarlo.`,
+      corto: `Tu límite es ${eur(S.limiteRescates)}`, acciones: [['ok', 'Entendido'], ['#metas', 'Ver metas', 1]], nunca: true });
+    const vivos = todos ? L : L.filter((k) => !C.no[k.clave] && !C.tipoNo[k.tipo]);
+    return vivos.sort((a, b) => b.prio - a.prio);
+  }
+  function tarjetaConsejo() {
+    const L = consejos(); if (!L.length) return '';
+    const k = L[0];
+    return `<a class="rec-home ${k.aviso ? 'av' : ''}" href="#consejos">
+      <span class="row"><span class="pix lab">${SPARK.replace('class="spark"', 'class="spark" style="margin:0 4px 0 0;width:12px;height:12px;vertical-align:-1px"')}BRISA TE RECOMIENDA</span><span class="cnt">${L.length}</span></span>
+      <span class="rec-h"><span class="ic">${k.icon}</span><span class="t"><b>${k.titulo}</b><span class="small">${k.corto || k.sub}</span></span></span>
+      <span class="xs mas">${L.length > 1 ? 'Ver los ' + L.length + ' consejos' : 'Ver el consejo'} ›</span></a>`;
+  }
+  const YS = { nombre: '', importe: '', cuando: 'proximo' };
+  // Cobro siguiente a una fecha de cobro
+  function siguienteCobro(f) {
+    const D = S.perfil ? Number(S.perfil.diaCobro) || 30 : 30; const d = aDate(f);
+    return iso(new Date(d.getFullYear(), d.getMonth() + 1, Math.min(D, new Date(d.getFullYear(), d.getMonth() + 2, 0).getDate())));
+  }
+  function resultadoYSi() {
+    const x = numero(YS.importe);
+    if (!(x > 0)) return '<p class="small muted" style="margin:4px 0 0;line-height:1.5">Escribe cuánto sería al mes y te digo cómo te afecta, mes a mes, con tus fijos y tus plazos.</p>';
+    const c = ciclo(); const filas = []; let ini = c.fin;
+    for (let k = 0; k < 4; k++) {
+      const fin = siguienteCobro(ini); const P = plan(ini, fin, c.H);
+      filas.push({ mes: MESES_L[aDate(masDias(ini, 15)).getMonth()], sin: P.sobra, con: P.sobra - x }); ini = fin;
+    }
+    const ult = filas[filas.length - 1];
+    const ahoraTxt = YS.cuando === 'ahora' ? (() => {
+      const queda = c.libre - x;
+      return `<div class="ys-now ${queda < 0 ? 'mal' : ''}"><b>Este mes</b><span>${queda < 0 ? `No llegas: te faltarían ${eur(-queda)} hasta el ${aDate(c.fin).getDate()}.` : `Te quedarían ${eur(queda)}: unos ${eur(queda / c.restantes)} al día hasta el ${aDate(c.fin).getDate()}.`}</span></div>`;
+    })() : '';
+    const A = ahorro(); const meta = A.metas.find((m) => m.ahorrado < m.objetivo);
+    const etaTxt = (s) => { if (!meta || s <= 0) return null; const d = new Date(); d.setMonth(d.getMonth() + Math.ceil((meta.objetivo - meta.ahorrado) / s)); return MESES_L[d.getMonth()] + ' de ' + d.getFullYear(); };
+    const e1 = etaTxt(ult.sin), e2 = etaTxt(ult.con);
+    return `${ahoraTxt}
+      <div class="ys-t"><span></span><span class="xs muted">Sin él</span><span class="xs muted">Con él</span></div>
+      ${filas.map((f) => `<div class="ys-t"><span>${f.mes.charAt(0).toUpperCase() + f.mes.slice(1)}</span><span class="num">${eur(f.sin)}</span><span class="num" style="color:${f.con < 0 ? 'var(--berry)' : 'var(--mint-d)'}">${f.con < 0 ? '−' + eur(-f.con) : eur(f.con)}</span></div>`).join('')}
+      <p class="small" style="line-height:1.5;margin:10px 0 0">${ult.con >= 0 ? `Con tu gasto normal (${eur(c.P.normal)} al mes) te sobrarían unos <b>${eur(ult.con)} al mes</b>.` : `Con tu gasto normal (${eur(c.P.normal)} al mes) <b>no te llega</b>: tendrías que gastar ${eur(-ult.con)} menos al mes.`}${e1 && meta ? ` «${esc(meta.nombre)}»: ${e2 ? (e1 === e2 ? 'lista en ' + e2 + ', igual que sin él' : 'lista en ' + e2 + ' en vez de ' + e1) : 'sin fecha, porque no te sobraría nada'}.` : ''}</p>
+      <button type="button" class="btn small ghost" id="ysFijo" style="margin-top:12px">Apuntarlo en pagos fijos</button>`;
+  }
+  R.consejos = () => {
+    if (!S.movs.length) return R.inicio();
+    const L = consejos();
+    const silenciados = Object.keys(S.consejos.no).length + Object.keys(S.consejos.tipoNo).length;
+    const tarjeta = (k) => `<section class="rec ${k.aviso ? 'av' : ''}">
+      <div class="rec-h"><span class="ic">${k.icon}</span><div class="t"><div class="pix lab">${k.etiqueta}</div><b>${k.titulo}</b><p class="small">${k.sub}</p></div></div>
+      <div class="rec-b">${k.acciones.map(([a, t, p]) => a.charAt(0) === '#' ? `<a class="btn small ${p ? '' : 'ghost'}" href="${a}">${t}</a>` : `<button type="button" class="btn small ${p ? '' : 'ghost'}" data-rk="${esc(k.clave)}" data-ra="${a}">${t}</button>`).join('')}</div>
+      ${k.nunca ? `<button type="button" class="rec-no" data-rk="${esc(k.clave)}" data-ra="nunca">No me lo vuelvas a decir</button>` : ''}
+    </section>`;
+    return `
+    <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver a Inicio">${IC.back}</a><div style="flex-grow:1"><h1>Brisa te recomienda${SPARK}</h1><div class="small muted">Lo que veo en tu cuenta. Se calcula en tu móvil.</div></div></div>
+    ${L.length ? L.map(tarjeta).join('') : `<section class="hero" style="text-align:center">${orn(18, '#fff', 'top:16px;right:22px', 'tw')}<div class="h1" style="font-size:22px">Todo en orden</div><p class="small" style="color:#4A2E3C;line-height:1.5;margin:6px 0 0">Ahora mismo no veo nada que mejorar. Si cambia algo, te aviso aquí.</p></section>`}
+    <section class="rec ys">
+      <div class="rec-h"><span class="ic">${IC.house}</span><div class="t"><div class="pix lab">¿Y SI…?</div><b>Prueba un gasto nuevo antes de decir que sí</b></div></div>
+      <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:10px;margin-top:12px">
+        <label class="field" style="margin:0">¿Qué es?<input id="ysN" value="${esc(YS.nombre)}" placeholder="Alquiler" autocomplete="off"></label>
+        <label class="field" style="margin:0">Al mes (€)<input id="ysI" inputmode="decimal" value="${esc(YS.importe)}" placeholder="200" autocomplete="off"></label>
+      </div>
+      <div class="seg" role="group" aria-label="Cuándo empieza" style="margin:10px 0 4px">
+        <button type="button" data-ysc="proximo" aria-pressed="${YS.cuando !== 'ahora'}">Con el próximo cobro</button>
+        <button type="button" data-ysc="ahora" aria-pressed="${YS.cuando === 'ahora'}">Este mes</button>
+      </div>
+      <div id="ysRes">${resultadoYSi()}</div>
+    </section>
+    ${silenciados ? `<button type="button" class="btn ghost small" id="bRecReset" style="margin:6px auto 0">Volver a ver lo que silencié (${silenciados})</button>` : ''}`;
+  };
+  function accionConsejo(clave, a) {
+    const k = consejos(true).find((x) => x.clave === clave); if (!k) return;
+    const C = S.consejos;
+    if (a === 'nunca') { C.tipoNo[k.tipo] = true; toast('Vale, no te lo vuelvo a decir'); }
+    else if (a === 'cancel') {
+      C.cancelados[k.grupo] = { fecha: hoyIso(), importe: k.importe, nombre: k.nombre };
+      // Si estaba en tus pagos fijos, deja de contar desde el mes que viene
+      const m = S.movs.find((x) => x.id === k.mov);
+      const fx = m && (S.fijos || []).find((x) => !esCuotas(x) && !x.hasta && encajaFijo(x, m));
+      if (fx) fx.hasta = hoyIso().slice(0, 7);
+      toast(`¡Bien hecho! ${eur(k.importe * 12)} al año que se quedan contigo` + (fx ? '. Lo quito de tus pagos fijos' : ''));
+    } else { C.no[clave] = hoyIso(); toast(a === 'quedo' ? 'Vale, no te lo vuelvo a decir' : 'Hecho'); }
+    guardar(); render();
+  }
 
   R.comprar = () => {
     if (!S.movs.length) return R.inicio();
@@ -1724,10 +1931,11 @@
     };
     $sheet.showModal();
   }
-  function nuevoFijo() {
+  function nuevoFijo(pre) {
+    pre = pre || {};
     $sheet.innerHTML = `<div class="num" style="font-size:20px;margin-bottom:12px">Nuevo pago fijo</div>
-      <form id="sForm"><label class="field">Nombre<input name="n" placeholder="Gimnasio" required></label>
-      <div class="tiles" style="margin-bottom:0"><label class="field">Importe (€)<input name="i" inputmode="decimal" required></label><label class="field">Día del cargo<input name="d" inputmode="numeric" value="1"></label></div>
+      <form id="sForm"><label class="field">Nombre<input name="n" placeholder="Gimnasio" value="${esc(pre.nombre || '')}" required></label>
+      <div class="tiles" style="margin-bottom:0"><label class="field">Importe (€)<input name="i" inputmode="decimal" value="${esc(pre.importe || '')}" required></label><label class="field">Día del cargo<input name="d" inputmode="numeric" value="${esc(pre.dia || 1)}"></label></div>
       <label class="field">Palabra que aparece en el banco<input name="b" placeholder="gimnasio" required></label>
       <div class="field">¿Es una compra a plazos?<div class="seg" style="margin:0"><button type="button" data-pl="no" aria-pressed="true">No, es indefinido</button><button type="button" data-pl="si" aria-pressed="false">Sí, a plazos</button></div></div>
       <div id="sCuotas" hidden><div class="tiles" style="margin-bottom:0"><label class="field">¿Cuántas cuotas quedan?<input name="c" inputmode="numeric" placeholder="3"></label>
@@ -1971,7 +2179,19 @@
     $app.querySelectorAll('[data-sug]').forEach((b) => b.onclick = () => abrirSugerido(b.dataset.sug));
     $app.querySelectorAll('[data-cal]').forEach((b) => b.onclick = () => { calMes = sumarMes(calMes || hoyIso().slice(0, 7), Number(b.dataset.cal)); calDia = null; render(); });
     $app.querySelectorAll('[data-dia]').forEach((b) => b.onclick = () => { calDia = calDia === b.dataset.dia ? null : b.dataset.dia; const y = window.scrollY; render(); window.scrollTo(0, y); });
-    if (q('#bNuevoFijo')) q('#bNuevoFijo').onclick = nuevoFijo;
+    if (q('#bNuevoFijo')) q('#bNuevoFijo').onclick = () => nuevoFijo();
+    if (r === 'consejos') {
+      $app.querySelectorAll('[data-ra]').forEach((b) => b.onclick = () => accionConsejo(b.dataset.rk, b.dataset.ra));
+      if (q('#bRecReset')) q('#bRecReset').onclick = () => { S.consejos.no = {}; S.consejos.tipoNo = {}; guardar(); render(); toast('Vuelves a ver todos los consejos'); };
+      const res = q('#ysRes');
+      const refrescar = () => { res.innerHTML = resultadoYSi(); };
+      q('#ysN').oninput = (e) => { YS.nombre = e.target.value; };
+      q('#ysI').oninput = (e) => { YS.importe = e.target.value; refrescar(); };
+      $app.querySelectorAll('[data-ysc]').forEach((b) => b.onclick = () => {
+        YS.cuando = b.dataset.ysc; $app.querySelectorAll('[data-ysc]').forEach((x) => x.setAttribute('aria-pressed', x === b)); refrescar();
+      });
+      res.onclick = (e) => { if (e.target.closest('#ysFijo')) nuevoFijo({ nombre: YS.nombre.trim(), importe: YS.importe, dia: YS.cuando === 'ahora' ? 1 : (S.perfil && S.perfil.diaCobro) || 30 }); };
+    }
     if (q('#bCandado')) q('#bCandado').onclick = abrirCandado;
     if (q('#bBanco')) q('#bBanco').onclick = conectarBanco;
     if (q('#bSyncBanco')) q('#bSyncBanco').onclick = () => sincronizarBanco(true);

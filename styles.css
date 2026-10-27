@@ -157,3 +157,28 @@ div.aj-row{cursor:default}
 @keyframes brShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 .shake{animation:brShake .3s ease-in-out 2}
 @media (prefers-reduced-motion:reduce){.pulse,.pulse2{animation:none;opacity:0}.shake{animation:none}}
+/* v0.4.9 · Brisa te recomienda */
+.rec-home{display:flex;flex-direction:column;gap:10px;border-radius:24px;padding:14px 18px;margin-bottom:12px;background:#fff;border:1.5px dashed #F0C3D5;text-decoration:none;color:var(--ink)}
+.rec-home.av,.rec.av{background:#FFF1E8;border-color:#F0B49B}
+.rec-home .lab,.rec .lab{font-size:12px;letter-spacing:.8px;color:var(--berry)}
+.rec-home.av .lab,.rec.av .lab{color:var(--peach-d)}
+.rec-home .cnt{background:var(--rose);color:var(--berry-d);border-radius:10px;padding:1px 9px;font-size:12px;font-weight:800}
+.rec-home .mas{text-align:right;font-weight:800;color:var(--berry)}
+.rec-home.av .mas{color:var(--peach-d)}
+.rec-h{display:flex;gap:12px;align-items:flex-start}
+.rec-h .ic{width:40px;height:40px;border-radius:20px;background:var(--rose);color:var(--berry);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rec-h .ic svg{width:20px;height:20px}
+.av .rec-h .ic{background:var(--peach);color:var(--peach-d)}
+.rec-h .t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rec-h b{font-size:15px}
+.rec-h .small{color:var(--muted);line-height:1.45;margin:2px 0 0}
+.av .rec-h .small{color:#5A4238}
+.rec{background:#fff;border:1.5px dashed #F0C3D5;border-radius:24px;padding:16px 18px;margin-bottom:12px}
+.rec.ys{border-style:solid;border-color:var(--line)}
+.rec-b{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+.av .rec-b .btn:not(.ghost){background:var(--peach-d)}
+.rec-no{display:block;margin:8px 0 0 auto;background:none;border:0;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 0}
+.ys-t{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;min-height:34px;border-bottom:1px solid var(--line);font-size:14px}
+.ys-t>span:not(:first-child){text-align:right}
+.ys-now{display:flex;flex-direction:column;gap:2px;background:var(--mint);color:#22392E;border-radius:16px;padding:10px 14px;margin:8px 0 10px;font-size:13px;line-height:1.45}
+.ys-now.mal{background:var(--peach);color:#5A4238}
