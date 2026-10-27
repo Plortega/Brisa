@@ -1,9 +1,9 @@
-/* Brisa · v0.5.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.5.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.5.1';
+  const VERSION_APP = '0.5.2';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -1272,7 +1272,7 @@
         corto: 'Revisa que la baja se hizo', acciones: [['ok', 'Lo miro', 1]] });
     }
     // 3 · Categorías que se pasan del tope (o de tu media) a mitad de mes
-    const topes = (S.plan && S.plan.topes) || {};
+    const topes = topesActivos(c);
     const largo = Math.max(1, dias(c.inicio, c.fin)); const frac = Math.min(1, transcurridos / largo);
     const cats = Object.keys(AJUSTABLES).map((k) => {
       const ref = topes[k] || c.H.porCat[k] || 0; const act = c.porCat[k] || 0;
@@ -1461,7 +1461,7 @@
     delete porCat['Por revisar'];
     const top = Object.entries(porCat).sort((a, b) => b[1] - a[1])[0] || null;
     const semanal = c.presupuesto * 7 / 30.4;
-    const topes = (S.plan && S.plan.topes) || {};
+    const topes = topesActivos(c);
     return { c, ini, fin, gasto, gasto0, rescates, grandes, top, semanal, topes };
   }
   function tarjetasSemana() {
@@ -1652,7 +1652,7 @@
     const w = (n) => Math.max(0, Math.min(100, n / ing * 100)).toFixed(1) + '%';
     const filas = Object.entries(H.porCat).filter(([k]) => k !== 'Por revisar').sort((a, b) => b[1] - a[1]).slice(0, 8);
     const sug = sugeridos(H, r);
-    const topes = (S.plan && S.plan.topes) || {};
+    const topes = topesActivos(c);
     const maxP = Math.max(...H.pesos);
     const eta = metaEta(P.paraTi);
     return `
@@ -1691,7 +1691,7 @@
       <p class="xs muted" style="margin:6px 0 0;line-height:1.45">Lo típico es lo que gastas en un mes normal: un mes raro no lo mueve. Tu tope es un ${Math.round(r * 100)} % menos.</p>
     </section>
     <button class="btn" id="bAplicar" style="margin-top:2px">Aplicar este presupuesto</button>
-    ${S.plan && S.plan.fecha ? `<p class="xs muted" style="text-align:center;margin:8px 0 0">Aplicado el ${fmtF(S.plan.fecha)} (${RITMOS[S.plan.ritmo] ? RITMOS[S.plan.ritmo].label.toLowerCase() : ''})</p>` : ''}` : ''}
+    ${S.plan && S.plan.fecha ? `<p class="xs muted" style="text-align:center;margin:8px 0 0">Aplicado el ${fmtF(S.plan.fecha)} (${RITMOS[S.plan.ritmo] ? RITMOS[S.plan.ritmo].label.toLowerCase() : ''})${S.plan.desde && S.plan.desde > c.inicio ? ' · empieza con tu nómina del ' + fmtF(S.plan.desde) + '. Este mes se compara con lo típico' : ''}</p>` : ''}` : ''}
     <div class="h2">Este mes, por categoría</div>
     ${tarjetaPuntual(c)}
     ${filas.length ? `<div class="card">${filas.map(([k, avg], i) => {
@@ -1701,17 +1701,27 @@
     <p class="xs muted">Lo que está en tus pagos fijos no cuenta aquí: ya está reservado. Los extras van aparte.</p>
     ${seccionExtras(c)}`;
   };
+  // Un presupuesto aplicado empieza con la siguiente nómina: el mes en curso no se juzga con topes nuevos.
+  // (Si lo aplicas en los 3 primeros días del ciclo, empieza ya.) Hasta entonces sigue el anterior, si había.
+  function topesActivos(c) {
+    const pl = S.plan; if (!pl || !pl.topes) return {};
+    if (!pl.desde) pl.desde = dias(c.inicio, pl.fecha) > 3 ? c.fin : c.inicio;
+    if (c.inicio >= pl.desde) return pl.topes;
+    return pl.previo && (!pl.previo.desde || c.inicio >= pl.previo.desde) ? pl.previo.topes : {};
+  }
   function aplicarPresupuesto() {
     const c = ciclo(); const P = c.P;
     const topes = {}; sugeridos(c.H, RITMOS[P.ritmo].r).forEach((a) => (topes[a.cat] = a.tope));
-    S.plan = { ritmo: P.ritmo, fecha: hoyIso(), topes, paraTi: Math.round(P.paraTi) };
+    const ya = dias(c.inicio, hoyIso()) <= 3;
+    const previo = S.plan && S.plan.topes && Object.keys(topesActivos(c)).length ? { topes: topesActivos(c), desde: null } : null;
+    S.plan = { ritmo: P.ritmo, fecha: hoyIso(), desde: ya ? c.inicio : c.fin, topes, previo, paraTi: Math.round(P.paraTi) };
     guardar(); render();
     const capa = document.createElement('div'); capa.className = 'scrim';
     capa.innerHTML = `<div class="pop stitch modal" role="dialog" aria-modal="true" aria-label="Presupuesto aplicado">
       ${orn(34, '#fff', 'top:18px;left:26px', 'tw d1')}${orn(16, '#E27FA8', 'top:54px;left:64px', 'tw d2')}${orn(26, '#fff', 'top:22px;right:30px', 'tw d3')}${orn(14, '#E27FA8', 'top:70px;right:70px', 'tw d4')}${orn(18, '#fff', 'bottom:92px;left:22px', 'tw d5')}${orn(20, '#fff', 'bottom:100px;right:24px', 'tw d6')}
       <div style="width:72px;height:72px;border-radius:36px;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--berry);margin-bottom:6px"><svg width="34" height="34" viewBox="0 0 24 24" stroke-width="2"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
       <span class="h1" style="font-size:28px;line-height:1.1">¡Presupuesto aplicado!</span>
-      <span style="font-size:15px;line-height:1.45;color:#4A2E3C">Desde hoy Brisa usa estos topes y aparta <b>${eur(P.paraTi)}</b> al mes para ti.</span>
+      <span style="font-size:15px;line-height:1.45;color:#4A2E3C">${ya ? 'Desde hoy' : 'Con tu próxima nómina (' + fmtF(c.fin) + ')'} Brisa usa estos topes y aparta <b>${eur(P.paraTi)}</b> al mes para ti.</span>
       <button class="btn" id="mCerrar" style="margin-top:10px">Genial</button></div>`;
     document.body.appendChild(capa);
     const cerrar = () => capa.remove();

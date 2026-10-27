@@ -1,4 +1,4 @@
-# Brisa v0.5.1
+# Brisa v0.5.2
 
 App web instalable para gestionar tus finanzas. Tus movimientos y tus reglas se guardan **solo en tu móvil**: el código que subes a GitHub no contiene ningún dato tuyo.
 

@@ -198,6 +198,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.5.2 | 27 oct 2026 | Un presupuesto aplicado empieza con la siguiente nómina (si lo aplicas en los 3 primeros días del ciclo, empieza ya). Hasta entonces el mes en curso se compara con lo típico o con el presupuesto anterior |
 | 0.5.1 | 27 oct 2026 | Arreglo: el botón «Sí, fue puntual» salía sin texto (azul sobre azul) |
 | 0.5.0 | 27 oct 2026 | Mes típico y extras: el presupuesto se calcula con la mediana de cada categoría (un mes raro no lo mueve); viajes, gastos de 200 € o más y lo marcado como «algo puntual» van a «Extras de este mes». «¿Fue algo puntual?» cuando una categoría se dispara. «Me voy de viaje» con fechas |
 | 0.4.11 | 27 oct 2026 | Consejos: solo cuentan como suscripción los cargos de 3 meses seguidos, el mismo día y el mismo importe, y nunca las compras del día a día (súper, bares, estanco, tiendas…) |
