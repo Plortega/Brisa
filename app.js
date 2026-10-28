@@ -1,9 +1,9 @@
-/* Brisa · v0.6.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.6.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.6.1';
+  const VERSION_APP = '0.6.2';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -88,6 +88,7 @@
     S.devol = S.devol || {}; S.devolNo = S.devolNo || {};
     // v0.4.9: Brisa te recomienda
     // v0.5.0: extras y viajes
+    S.compartidoNo = S.compartidoNo || {};
     S.viajes = S.viajes || []; S.extras = S.extras || {}; S.puntualNo = S.puntualNo || {};
     S.consejos = S.consejos || {}; ['no', 'tipoNo', 'cancelados'].forEach((k) => (S.consejos[k] = S.consejos[k] || {}));
     S.reglas = S.reglas || { reglasUsuario: {}, palabras: [], importes: [] };
@@ -362,6 +363,8 @@
       const g = S.movs.find((x) => x.id === gid);
       if (g) return { categoria: cat(g).categoria, confianza: 1, motivo: 'Te devolvieron parte de ' + nombreMov(g), cuentaComoGasto: false, devolucion: g.id };
     }
+    const fx = devuelveFijo(m);
+    if (fx) return { categoria: 'Suscripciones', confianza: 1, motivo: (fx.comparte.quien || 'Te') + ' te devuelve su parte de ' + fx.nombre, cuentaComoGasto: false, compartido: fx.id };
     const c = B.categorizar(m, S.reglas);
     if (S.overrides[m.id]) return { ...c, categoria: S.overrides[m.id], confianza: 1, motivo: 'Lo cambiaste tú', reparto: undefined,
       cuentaComoGasto: !['Ingresos', 'Ahorro', 'Rescate del ahorro'].includes(S.overrides[m.id]) && m.importe < 0 };
@@ -474,6 +477,31 @@
     return (!x.min || v >= x.min) && (!x.max || v <= x.max);
   }
   const deFijo = (m) => (S.fijos || []).some((x) => encajaFijo(x, m));
+  /* ---------- Fijos compartidos (v0.6.2): alguien te devuelve su parte cada mes ---------- */
+  // x.comparte = { quien, importe, busca }: Brisa reserva solo tu parte y la transferencia no cuenta como ingreso
+  const tuParteFijo = (x) => Math.max(0, Math.round((Number(x.importe) - (x.comparte && !esCuotas(x) ? Number(x.comparte.importe) || 0 : 0)) * 100) / 100);
+  function devuelveFijo(m) {
+    if (m.importe <= 0 || /nomina/.test(B.limpiar(m.concepto + ' ' + m.tipo))) return null;
+    const t = B.limpiar([m.concepto, m.tipo, m.observaciones].join(' '));
+    return (S.fijos || []).find((x) => {
+      if (!x.comparte || esCuotas(x)) return false;
+      let re; try { re = new RegExp(x.comparte.busca, 'i'); } catch (e) { return false; }
+      const imp = Number(x.comparte.importe) || 0;
+      return re.test(t) && m.importe >= imp * 0.8 && m.importe <= imp * 1.2;
+    }) || null;
+  }
+  const palabrasFijo = (x) => [...new Set(B.limpiar(x.nombre + ' ' + String(x.busca || '').replace(/[\\|().*+?^$\[\]{}]/g, ' ')).split(/[^a-zñ0-9]+/).filter((w) => w.length >= 4))];
+  // ¿Te llega dinero cada mes con el nombre de un fijo? (p. ej. «Spotify» 10,50 € el día 1)
+  function sugerirCompartidos() {
+    const desde = masDias(hoyIso(), -100);
+    const ent = S.movs.filter((m) => m.importe > 0 && m.fecha >= desde && !/nomina/.test(B.limpiar(m.concepto + ' ' + m.tipo)) && !devuelveFijo(m) && !esBizumRecibido(m));
+    return (S.fijos || []).filter((x) => !esCuotas(x) && !x.comparte && !x.hasta && !(S.compartidoNo || {})[x.id]).map((x) => {
+      const ws = palabrasFijo(x); if (!ws.length) return null;
+      const ms = ent.filter((m) => { const t = B.limpiar([m.concepto, m.tipo, m.observaciones].join(' ')); return ws.some((w) => t.includes(w)) && m.importe < Number(x.importe); });
+      if (new Set(ms.map((m) => m.fecha.slice(0, 7))).size < 2) return null;
+      return { x, importe: mediana(ms.map((m) => m.importe)), palabra: ws.find((w) => ms.every((m) => B.limpiar([m.concepto, m.tipo, m.observaciones].join(' ')).includes(w))) || ws[0] };
+    }).filter(Boolean);
+  }
   // Cargos previstos de un fijo entre dos fechas [desde, hasta)
   function cargosDe(x, desde, hasta) {
     if (esCuotas(x)) {
@@ -487,7 +515,7 @@
       if ((!x.desde || ym >= x.desde) && (!x.hasta || ym <= x.hasta)) {
         const ult = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
         const f = iso(new Date(d.getFullYear(), d.getMonth(), Math.min(Number(x.dia) || 1, ult)));
-        if (f >= desde && f < hasta) out.push({ fijo: x, fecha: f, importe: Number(x.importe) });
+        if (f >= desde && f < hasta) out.push({ fijo: x, fecha: f, importe: tuParteFijo(x) });
       }
       d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
     }
@@ -573,7 +601,7 @@
     const ymFin = fin.slice(0, 7);
     const fijos = S.fijos.length ? S.fijos.reduce((a, x) => a + (esCuotas(x)
       ? cargosDe(x, inicio, fin).reduce((b, q) => b + q.importe, 0)
-      : ((!x.desde || ymFin >= x.desde) && (!x.hasta || ymFin <= x.hasta) ? Number(x.importe) : 0)), 0) : Number(p.fijos) || 0;
+      : ((!x.desde || ymFin >= x.desde) && (!x.hasta || ymFin <= x.hasta) ? tuParteFijo(x) : 0)), 0) : Number(p.fijos) || 0;
     const ritmo = RITMOS[p.ritmo] ? p.ritmo : 'equilibrado';
     const normal = H.hay ? H.normal : Math.max(0, cobras - fijos - 330);
     const diaADia = normal * (1 - RITMOS[ritmo].r);
@@ -1310,6 +1338,15 @@
         titulo: `${mb.nombre}: ${eur(coste, true)} en 3 meses`, sub: `Lo pagas cada mes, pero solo lo has usado ${usos === 0 ? 'ninguna vez' : usos === 1 ? 'una vez' : usos + ' veces'}.`,
         corto: `Solo lo has usado ${usos === 1 ? 'una vez' : usos + ' veces'} en 3 meses`, acciones: [['quedo', 'Me lo quedo'], ['cancel', 'Ya lo cancelé', 1]], nunca: true });
     }
+    // 5b · Te devuelven parte de un fijo y este mes no ha llegado
+    for (const x of (S.fijos || []).filter((f) => f.comparte && !esCuotas(f) && !f.hasta)) {
+      const ms = S.movs.filter((m) => devuelveFijo(m) === x).sort((a, b) => b.fecha.localeCompare(a.fecha));
+      if (!ms.length) continue;
+      const espera = masDias(ms[0].fecha, 35);
+      if (hoy > espera) L.push({ clave: 'comp|' + x.id + '|' + espera, tipo: 'compartido', prio: 58, icon: IC.split, etiqueta: 'PENDIENTE',
+        titulo: `${esc(x.comparte.quien || 'Te')} aún no te ha pasado lo de ${esc(x.nombre)}`, sub: `Sueles recibir ${eur(x.comparte.importe, true)} hacia el día ${aDate(ms[0].fecha).getDate()}. La última vez fue el ${fmtF(ms[0].fecha)}.`,
+        corto: `Sueles recibir ${eur(x.comparte.importe, true)}`, acciones: [['ok', 'Ya se lo digo', 1]] });
+    }
     // 6 · Rescates por encima de tu límite
     const usado = c.rescates - c.forzados;
     if (usado > S.limiteRescates && S.limiteRescates > 0) L.push({ clave: 'resc|' + c.fin, tipo: 'rescates', prio: 40, icon: IC.uturn, etiqueta: 'RESCATES',
@@ -1819,7 +1856,7 @@
     const col = { pendiente: 'var(--peach-d)', pagado: 'var(--mint-d)', despues: 'var(--lilac-d)', pasado: 'var(--muted)' }[est];
     return `<button class="mov" data-fijo="${esc(q.fijo.id)}" data-fecha="${q.fecha}">
       <span class="av" style="background:${bg};color:${col};flex-direction:column;line-height:1"><b style="font-size:15px">${aDate(q.fecha).getDate()}</b><span style="font-size:9px;font-family:var(--sans)">${MESES[aDate(q.fecha).getMonth()]}</span></span>
-      <span class="t"><span class="n">${esc(q.fijo.nombre)}</span><span class="xs muted">${TXT_EST[est]}${q.de ? ` · cuota ${q.n} de ${q.de}` : ''}${q.manual ? ' · marcado por ti' : ''}</span></span>
+      <span class="t"><span class="n">${esc(q.fijo.nombre)}</span><span class="xs muted">${TXT_EST[est]}${q.de ? ` · cuota ${q.n} de ${q.de}` : ''}${q.manual ? ' · marcado por ti' : ''}${q.fijo.comparte && !q.de ? ' · tu parte' : ''}</span></span>
       <span class="amt">${eur(importe !== undefined ? importe : q.importe, true)}</span></button>`;
   }
   R.fijos = () => {
@@ -1839,6 +1876,7 @@
     ${pend.length ? `<div class="h2">Antes de cobrar</div><div class="card" style="padding:4px 16px">${pend.map((q) => filaCargo(q, 'pendiente', q.pendiente)).join('')}</div>` : ''}
     ${pag.length ? `<div class="h2">Pagados en este ciclo</div><div class="card" style="padding:4px 16px">${pag.map((q) => filaCargo(q, 'pagado')).join('')}</div>` : ''}
     ${plz.length ? `<div class="h2">Pagos a plazos sin apuntar</div>${tarjetaPlazos(plz)}` : ''}
+    ${sugerirCompartidos().map((o) => `<div class="card" style="background:var(--sky);border:0;color:var(--sky-d)"><b>¿Compartes ${esc(o.x.nombre)}?</b><p class="small" style="margin:4px 0 10px;line-height:1.45">Te llegan unos ${eur(o.importe, true)} cada mes con «${esc(o.palabra)}». Si alguien te devuelve su parte, Brisa reserva solo la tuya.</p><div class="rec-b" style="margin:0"><button type="button" class="btn small ghost" data-compno="${esc(o.x.id)}">No</button><button type="button" class="btn small" style="background:var(--sky-d)" data-compsi="${esc(o.x.id)}">Sí, lo comparto</button></div></div>`).join('')}
     ${sug.length ? `<div class="h2">¿Estos también son fijos?</div><p class="xs muted" style="margin:-4px 0 8px;line-height:1.45">Se repiten cada mes con un importe parecido. Toca uno para decirme si lo es.</p>
     <div class="card" style="padding:4px 16px;background:var(--butter-l)">${sug.map((s) => `<button class="mov" data-sug="${esc(s.clave)}"><span class="av" style="background:var(--butter);color:var(--butter-d)">?</span><span class="t"><span class="n">${esc(s.nombre)}</span><span class="xs muted">${s.meses.join(', ')} · hacia el día ${s.dia}</span></span><span class="amt">${eur(s.importe, true)}</span></button>`).join('')}</div>` : ''}
     ${futuros.length ? `<div class="h2">Empiezan más adelante</div><div class="card" style="padding:4px 16px">${futuros.map((o) => filaCargo({ ...o.q, n: o.q.n }, 'despues')).join('')}</div>` : ''}
@@ -2018,12 +2056,38 @@
   }
 
   // Hoja de un pago fijo: marcar este cargo, editar, ver cuotas o quitarlo
-  function abrirFijo(id, fecha) {
+  function bloqueCompartido(x) {
+    if (!x.comparte) return `<button class="btn ghost" id="sComparto" style="margin:0 0 14px">${IC.split.replace('<svg', '<svg width="18" height="18" style="vertical-align:-4px;margin-right:6px;color:var(--sky-d)"')}Lo comparto</button>`;
+    const ult = S.movs.filter((m) => devuelveFijo(m) === x).sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+    return `<div class="card" style="background:var(--sky);border:0;margin:0 0 14px;padding:10px 16px;color:var(--sky-d)">
+      <div class="row small"><span>Lo compartes${x.comparte.quien ? ' con ' + esc(x.comparte.quien) : ''}: te devuelve ${eur(x.comparte.importe, true)}</span><b>Tu parte ${eur(tuParteFijo(x), true)}</b></div>
+      <div class="xs" style="margin-top:4px">${ult ? 'Última vez el ' + fmtF(ult.fecha) : 'Aún no he visto su transferencia'} · <a href="#fijos" id="sNoComparto" style="color:inherit">Ya no lo comparto</a></div></div>`;
+  }
+  function abrirFijo(id, fecha, modo0) {
     const c = ciclo(); const real = S.fijos.find((x) => x.id === id);
     if (!real) return;
     const q = c.fijosC.find((x) => x.fijo === real && (!fecha || x.fecha === fecha)) || null;
     const cuotas = esCuotas(real);
     const vista = (modo) => {
+      if (modo === 'comparto') {
+        const sg = sugerirCompartidos().find((o) => o.x === real);
+        const pre = real.comparte || { quien: '', importe: sg ? sg.importe : '' };
+        $sheet.innerHTML = `<div class="num" style="font-size:20px;margin-bottom:4px">Compartes ${esc(real.nombre)}</div>
+          <p class="small muted" style="margin:0 0 12px;line-height:1.5">Brisa reservará solo tu parte y la transferencia que te llega cada mes no contará como ingreso.</p>
+          <form id="sForm"><div class="tiles" style="margin-bottom:0"><label class="field">¿Con quién?<input name="w" value="${esc(pre.quien)}" placeholder="Sarai" autocomplete="off"></label>
+          <label class="field">Te devuelve al mes (€)<input name="i" inputmode="decimal" value="${esc(String(pre.importe).replace('.', ','))}" required></label></div>
+          ${sg ? `<p class="xs" style="margin:0 0 12px;color:var(--sky-d)">Te llegan unos ${eur(sg.importe, true)} cada mes con «${esc(sg.palabra)}».</p>` : ''}
+          <div class="btns"><button type="button" class="btn ghost" id="sCancel">Cancelar</button><button class="btn" type="submit">Guardar</button></div></form>`;
+        $sheet.querySelector('#sForm').onsubmit = (e) => {
+          e.preventDefault(); const t = e.target; const F = (n) => t.querySelector('[name="' + n + '"]').value;
+          const imp = numero(F('i')); if (!(imp > 0)) return;
+          const quien = F('w').trim();
+          const ws = palabrasFijo(real).map(escRe); if (quien) ws.push(escRe(B.limpiar(quien)));
+          real.comparte = { quien, importe: Math.min(imp, Number(real.importe)), busca: [...new Set((sg ? [escRe(sg.palabra)] : []).concat(ws).filter(Boolean))].join('|') || escRe(B.limpiar(real.nombre)) };
+          guardar(); $sheet.close(); render(); toast(`Listo: tu parte de ${real.nombre} es ${eur(tuParteFijo(real), true)}`);
+        };
+        return;
+      }
       if (modo === 'editar') {
         $sheet.innerHTML = `<div class="num" style="font-size:20px;margin-bottom:12px">Editar pago fijo</div>
           <form id="sForm"><label class="field">Nombre<input name="n" value="${esc(real.nombre)}" required></label>
@@ -2047,6 +2111,7 @@
       $sheet.innerHTML = `
         <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">${esc(real.nombre)}</div><div class="small muted">${sub}</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
         <p class="small" style="line-height:1.5;margin:14px 0">${est} Cuando el cargo aparezca en tu Excel, Brisa lo marca como pagado sola.</p>
+        ${!cuotas ? bloqueCompartido(real) : ''}
         ${cuotas ? `<div class="card" style="background:var(--mint);border:0;margin:0 0 14px;padding:10px 16px">${real.cuotas.map((k, i) => `<div class="row small" style="min-height:30px;${k.fecha < hoyIso() ? 'opacity:.55' : ''}"><span>Cuota ${i + 1} · ${fmtF(k.fecha)}${aDate(k.fecha).getFullYear() !== new Date().getFullYear() ? ' ' + aDate(k.fecha).getFullYear() : ''}</span><span class="num">${eur(Number(k.importe), true)}</span></div>`).join('')}
           <div class="xs" style="margin-top:6px;color:var(--mint-d)">Terminan solas: no tienes que hacer nada.</div></div>` : ''}
         <button class="btn ${cuotas ? 'ghost' : ''}" id="sQuitar">${cuotas ? 'Ya está pagado del todo' : 'Ya no lo pago'}</button>
@@ -2063,12 +2128,14 @@
         guardar(); $sheet.close(); render(); toast(q.pendiente > 0 ? 'Marcado como pagado' : 'Marcado como pendiente');
       };
       $sheet.querySelector('#sEditar').onclick = (e) => { e.preventDefault(); vista('editar'); };
+      if ($sheet.querySelector('#sComparto')) $sheet.querySelector('#sComparto').onclick = () => vista('comparto');
+      if ($sheet.querySelector('#sNoComparto')) $sheet.querySelector('#sNoComparto').onclick = (e) => { e.preventDefault(); delete real.comparte; guardar(); $sheet.close(); render(); toast('Vuelve a contar entero'); };
       $sheet.querySelector('#sQuitar').onclick = () => {
         S.fijos = S.fijos.filter((x) => x !== real); guardar(); $sheet.close(); render(); toast('Quitado de tus pagos fijos');
       };
     };
     $sheet.onclick = (e) => { if (e.target.closest('#sCancel') || e.target.closest('#sCerrar') || e.target === $sheet) $sheet.close(); };
-    vista('menu');
+    vista(modo0 || 'menu');
     $sheet.showModal();
   }
 
@@ -2346,6 +2413,8 @@
       S.retenido = { importe: Math.max(0, v), fecha: hoyIso() }; guardar(); toast('Retenido actualizado');
     });
     $app.querySelectorAll('[data-fijo]').forEach((b) => b.onclick = () => abrirFijo(b.dataset.fijo, b.dataset.fecha));
+    $app.querySelectorAll('[data-compsi]').forEach((b) => b.onclick = () => abrirFijo(b.dataset.compsi, null, 'comparto'));
+    $app.querySelectorAll('[data-compno]').forEach((b) => b.onclick = () => { S.compartidoNo[b.dataset.compno] = true; guardar(); render(); });
     $app.querySelectorAll('[data-plazo]').forEach((b) => b.onclick = () => abrirPlazo(b.dataset.plazo));
     $app.querySelectorAll('[data-sug]').forEach((b) => b.onclick = () => abrirSugerido(b.dataset.sug));
     $app.querySelectorAll('[data-cal]').forEach((b) => b.onclick = () => { calMes = sumarMes(calMes || hoyIso().slice(0, 7), Number(b.dataset.cal)); calDia = null; render(); });
