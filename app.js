@@ -1,9 +1,9 @@
-/* Brisa · v0.6.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.6.4 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.6.3';
+  const VERSION_APP = '0.6.4';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -440,7 +440,7 @@
   // Son extras: un gasto de 200 € o más, la categoría Viajes, lo que gastas en las fechas de un viaje
   // y lo que marcas tú como «algo puntual» (S.extras[id]).
   // Taller, ITV, neumáticos…: siempre extra (la gasolina va aparte, como gasto necesario)
-  const TALLER = /norauto|brasal|taller|\bitv\b|neumatic|feu vert|midas|euromaster|speedy|aurgi|confort auto|first stop|carglass|recambio|mecanic/;
+  const TALLER = /norauto|taller|\bitv\b|neumatic|feu vert|midas|euromaster|speedy|aurgi|confort auto|first stop|carglass|recambio|mecanic/;
   const enViaje = (m) => (S.viajes || []).find((v) => { const f = m.fechaValor || m.fecha; return f >= v.desde && f <= v.hasta; });
   function motivoExtra(m, c) {
     if (!c.cuentaComoGasto || deFijo(m) || variable(m, c) <= 0) return null;

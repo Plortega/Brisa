@@ -198,6 +198,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.6.4 | 28 oct 2026 | Arreglo: Brasal (restaurante coreano) ya no se toma por un taller |
 | 0.6.3 | 28 oct 2026 | Fijos que varían cada mes (gasolina): se reserva un importe al cobrar, cada cargo sale de ahí y no del día a día ni del mes típico, y avisa si te pasas. Taller, ITV y neumáticos van solos a extras |
 | 0.6.2 | 28 oct 2026 | Fijos compartidos: «Lo comparto» en el detalle de un pago fijo. Brisa reserva solo tu parte, la transferencia de cada mes cuenta como devolución (no como ingreso) y avisa si no llega. Detecta sola los fijos que parecen compartidos |
 | 0.6.1 | 27 oct 2026 | Modo oscuro: lo que va bien pasa de verde menta a champán dorado, que combina con el rosa. En claro sigue verde |
