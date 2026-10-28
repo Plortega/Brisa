@@ -1,9 +1,9 @@
-/* Brisa · v0.6.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.6.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.6.2';
+  const VERSION_APP = '0.6.3';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -439,12 +439,15 @@
   // Extras (v0.5.0): lo extraordinario no cuenta en tu mes típico ni en tus topes, aunque salga de tu saldo.
   // Son extras: un gasto de 200 € o más, la categoría Viajes, lo que gastas en las fechas de un viaje
   // y lo que marcas tú como «algo puntual» (S.extras[id]).
+  // Taller, ITV, neumáticos…: siempre extra (la gasolina va aparte, como gasto necesario)
+  const TALLER = /norauto|brasal|taller|\bitv\b|neumatic|feu vert|midas|euromaster|speedy|aurgi|confort auto|first stop|carglass|recambio|mecanic/;
   const enViaje = (m) => (S.viajes || []).find((v) => { const f = m.fechaValor || m.fecha; return f >= v.desde && f <= v.hasta; });
   function motivoExtra(m, c) {
     if (!c.cuentaComoGasto || deFijo(m) || variable(m, c) <= 0) return null;
     if (S.extras && S.extras[m.id]) return 'Lo marcaste como algo puntual';
     const v = enViaje(m); if (v) return 'Es de tu viaje «' + v.nombre + '»';
     if (c.categoria === 'Viajes') return 'Es de la categoría Viajes';
+    if (TALLER.test(B.limpiar(m.concepto + ' ' + m.tipo))) return 'Es del taller o del coche';
     if (-m.importe >= GRANDE) return 'Es un gasto de ' + GRANDE + ' € o más';
     return null;
   }
@@ -495,7 +498,7 @@
   function sugerirCompartidos() {
     const desde = masDias(hoyIso(), -100);
     const ent = S.movs.filter((m) => m.importe > 0 && m.fecha >= desde && !/nomina/.test(B.limpiar(m.concepto + ' ' + m.tipo)) && !devuelveFijo(m) && !esBizumRecibido(m));
-    return (S.fijos || []).filter((x) => !esCuotas(x) && !x.comparte && !x.hasta && !(S.compartidoNo || {})[x.id]).map((x) => {
+    return (S.fijos || []).filter((x) => !esCuotas(x) && !x.variable && !x.comparte && !x.hasta && !(S.compartidoNo || {})[x.id]).map((x) => {
       const ws = palabrasFijo(x); if (!ws.length) return null;
       const ms = ent.filter((m) => { const t = B.limpiar([m.concepto, m.tipo, m.observaciones].join(' ')); return ws.some((w) => t.includes(w)) && m.importe < Number(x.importe); });
       if (new Set(ms.map((m) => m.fecha.slice(0, 7))).size < 2) return null;
@@ -1338,6 +1341,12 @@
         titulo: `${mb.nombre}: ${eur(coste, true)} en 3 meses`, sub: `Lo pagas cada mes, pero solo lo has usado ${usos === 0 ? 'ninguna vez' : usos === 1 ? 'una vez' : usos + ' veces'}.`,
         corto: `Solo lo has usado ${usos === 1 ? 'una vez' : usos + ' veces'} en 3 meses`, acciones: [['quedo', 'Me lo quedo'], ['cancel', 'Ya lo cancelé', 1]], nunca: true });
     }
+    // 5a · Gastos necesarios con tope (gasolina…): te has pasado de lo reservado
+    for (const q of c.fijosC.filter((x) => x.fijo.variable && x.pagado > x.importe + 3)) {
+      L.push({ clave: 'var|' + q.fijo.id + '|' + c.fin, tipo: 'variable', prio: 62, icon: IC.pie, etiqueta: 'TE HAS PASADO',
+        titulo: `${esc(q.fijo.nombre)}: ${eur(q.pagado)} de ${eur(q.importe)}`, sub: `Has gastado ${eur(q.pagado - q.importe)} más de lo que reservas cada mes. Si pasa a menudo, sube la reserva en Pagos fijos.`,
+        corto: `${eur(q.pagado - q.importe)} más de lo reservado`, acciones: [['ok', 'Entendido'], ['#fijos', 'Ver pagos fijos', 1]] });
+    }
     // 5b · Te devuelven parte de un fijo y este mes no ha llegado
     for (const x of (S.fijos || []).filter((f) => f.comparte && !esCuotas(f) && !f.hasta)) {
       const ms = S.movs.filter((m) => devuelveFijo(m) === x).sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -1856,7 +1865,7 @@
     const col = { pendiente: 'var(--peach-d)', pagado: 'var(--mint-d)', despues: 'var(--lilac-d)', pasado: 'var(--muted)' }[est];
     return `<button class="mov" data-fijo="${esc(q.fijo.id)}" data-fecha="${q.fecha}">
       <span class="av" style="background:${bg};color:${col};flex-direction:column;line-height:1"><b style="font-size:15px">${aDate(q.fecha).getDate()}</b><span style="font-size:9px;font-family:var(--sans)">${MESES[aDate(q.fecha).getMonth()]}</span></span>
-      <span class="t"><span class="n">${esc(q.fijo.nombre)}</span><span class="xs muted">${TXT_EST[est]}${q.de ? ` · cuota ${q.n} de ${q.de}` : ''}${q.manual ? ' · marcado por ti' : ''}${q.fijo.comparte && !q.de ? ' · tu parte' : ''}</span></span>
+      <span class="t"><span class="n">${esc(q.fijo.nombre)}</span><span class="xs muted">${q.fijo.variable ? `Llevas ${eur(q.pagado || 0)} de ${eur(q.importe)}${(q.pagado || 0) > q.importe ? ' · te has pasado' : ''}` : TXT_EST[est]}${q.de ? ` · cuota ${q.n} de ${q.de}` : ''}${q.manual ? ' · marcado por ti' : ''}${q.fijo.comparte && !q.de ? ' · tu parte' : ''}</span></span>
       <span class="amt">${eur(importe !== undefined ? importe : q.importe, true)}</span></button>`;
   }
   R.fijos = () => {
@@ -2106,21 +2115,21 @@
       }
       const quedan = cuotas ? real.cuotas.filter((k) => k.fecha >= hoyIso()) : [];
       const resto = quedan.reduce((a, k) => a + Number(k.importe), 0);
-      const sub = cuotas ? `A plazos · ${quedan.length ? `quedan ${quedan.length} (${eur(resto, true)})` : 'ya no quedan cuotas'}` : `${eur(Number(real.importe), true)} al mes · hacia el día ${esc(real.dia)}`;
-      const est = q ? (q.pendiente > 0 ? `Pendiente: ${eur(q.pendiente, true)} ${cuando(q.fecha) === 'hoy' ? 'hoy' : (q.fecha < hoyIso() ? 'desde el ' + fmtF(q.fecha) : cuando(q.fecha))}.` : 'Pagado en este ciclo.') : 'No tiene cargos antes de tu próximo cobro, así que ahora no se reserva.';
+      const sub = real.variable ? `Varía cada mes · reservo ${eur(Number(real.importe), true)}` : cuotas ? `A plazos · ${quedan.length ? `quedan ${quedan.length} (${eur(resto, true)})` : 'ya no quedan cuotas'}` : `${eur(Number(real.importe), true)} al mes · hacia el día ${esc(real.dia)}`;
+      const est = q && real.variable ? `Este mes llevas ${eur(q.pagado, true)} de ${eur(q.importe, true)}${q.pagado > q.importe ? ': te has pasado ' + eur(q.pagado - q.importe, true) : ''}. Lo que no gastes vuelve a tu día a día con la próxima nómina.` : q ? (q.pendiente > 0 ? `Pendiente: ${eur(q.pendiente, true)} ${cuando(q.fecha) === 'hoy' ? 'hoy' : (q.fecha < hoyIso() ? 'desde el ' + fmtF(q.fecha) : cuando(q.fecha))}.` : 'Pagado en este ciclo.') : 'No tiene cargos antes de tu próximo cobro, así que ahora no se reserva.';
       $sheet.innerHTML = `
         <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">${esc(real.nombre)}</div><div class="small muted">${sub}</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
-        <p class="small" style="line-height:1.5;margin:14px 0">${est} Cuando el cargo aparezca en tu Excel, Brisa lo marca como pagado sola.</p>
-        ${!cuotas ? bloqueCompartido(real) : ''}
+        <p class="small" style="line-height:1.5;margin:14px 0">${est}${real.variable ? '' : ' Cuando el cargo aparezca en tu Excel, Brisa lo marca como pagado sola.'}</p>
+        ${!cuotas && !real.variable ? bloqueCompartido(real) : ''}
         ${cuotas ? `<div class="card" style="background:var(--mint);border:0;margin:0 0 14px;padding:10px 16px">${real.cuotas.map((k, i) => `<div class="row small" style="min-height:30px;${k.fecha < hoyIso() ? 'opacity:.55' : ''}"><span>Cuota ${i + 1} · ${fmtF(k.fecha)}${aDate(k.fecha).getFullYear() !== new Date().getFullYear() ? ' ' + aDate(k.fecha).getFullYear() : ''}</span><span class="num">${eur(Number(k.importe), true)}</span></div>`).join('')}
           <div class="xs" style="margin-top:6px;color:var(--mint-d)">Terminan solas: no tienes que hacer nada.</div></div>` : ''}
         <button class="btn ${cuotas ? 'ghost' : ''}" id="sQuitar">${cuotas ? 'Ya está pagado del todo' : 'Ya no lo pago'}</button>
         <p class="xs muted" style="margin:6px 0 14px;text-align:center">Lo quito de tu lista y deja de reservarse.</p>
         <div style="display:flex;justify-content:center;gap:18px;flex-wrap:wrap" class="small">
-          <a href="#fijos" id="sEditar">${cuotas ? 'Cambiar cuotas' : 'Cambiar importe'}</a>
-          ${q ? `<a href="#fijos" id="sMarcar">${q.pendiente > 0 ? 'Ya lo pagué y no sale' : 'No está pagado'}</a>` : ''}
+          <a href="#fijos" id="sEditar">${cuotas ? 'Cambiar cuotas' : real.variable ? 'Cambiar reserva' : 'Cambiar importe'}</a>
+          ${q && !real.variable ? `<a href="#fijos" id="sMarcar">${q.pendiente > 0 ? 'Ya lo pagué y no sale' : 'No está pagado'}</a>` : ''}
         </div>`;
-      if (q) $sheet.querySelector('#sMarcar').onclick = (e) => {
+      if (q && $sheet.querySelector('#sMarcar')) $sheet.querySelector('#sMarcar').onclick = (e) => {
         e.preventDefault();
         S.fijosEstado[q.clave] = q.pendiente > 0 ? 'pagado' : 'pendiente';
         // El estado antiguo (por ciclo) ya no manda
@@ -2166,13 +2175,15 @@
       <form id="sForm"><label class="field">Nombre<input name="n" placeholder="Gimnasio" value="${esc(pre.nombre || '')}" required></label>
       <div class="tiles" style="margin-bottom:0"><label class="field">Importe (€)<input name="i" inputmode="decimal" value="${esc(pre.importe || '')}" required></label><label class="field">Día del cargo<input name="d" inputmode="numeric" value="${esc(pre.dia || 1)}"></label></div>
       <label class="field">Palabra que aparece en el banco<input name="b" placeholder="gimnasio" required></label>
-      <div class="field">¿Es una compra a plazos?<div class="seg" style="margin:0"><button type="button" data-pl="no" aria-pressed="true">No, es indefinido</button><button type="button" data-pl="si" aria-pressed="false">Sí, a plazos</button></div></div>
+      <div class="field">¿Cómo es?<div class="seg" style="margin:0"><button type="button" data-pl="no" aria-pressed="true">Cada mes igual</button><button type="button" data-pl="var" aria-pressed="false">Varía cada mes</button><button type="button" data-pl="si" aria-pressed="false">A plazos</button></div></div>
+      <p class="xs muted" id="sVarTxt" hidden style="margin:-4px 0 12px;line-height:1.45">Para gasolina y parecidos: el importe es lo que reservo cada mes. Cada cargo sale de ahí, no de tu día a día, y te aviso si te pasas.</p>
       <div id="sCuotas" hidden><div class="tiles" style="margin-bottom:0"><label class="field">¿Cuántas cuotas quedan?<input name="c" inputmode="numeric" placeholder="3"></label>
       <label class="field">¿La última es distinta? (€)<input name="u" inputmode="decimal" placeholder="Opcional"></label></div></div>
       <div class="btns"><button type="button" class="btn ghost" id="sCancel">Cancelar</button><button class="btn" type="submit">Añadir</button></div></form>`;
     $sheet.querySelectorAll('[data-pl]').forEach((b) => b.onclick = () => {
       $sheet.querySelectorAll('[data-pl]').forEach((x) => x.setAttribute('aria-pressed', x === b));
       $sheet.querySelector('#sCuotas').hidden = b.dataset.pl !== 'si';
+      $sheet.querySelector('#sVarTxt').hidden = b.dataset.pl !== 'var';
     });
     $sheet.onclick = (e) => { if (e.target.closest('#sCancel') || e.target === $sheet) $sheet.close(); };
     $sheet.querySelector('#sForm').onsubmit = (e) => {
@@ -2180,6 +2191,7 @@
       const pal = escRe(t.b.value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''));
       const imp = numero(t.i.value); const dia = Math.min(31, Math.max(1, Math.round(numero(t.d.value)) || 1));
       const nuevo = { id: 'f' + Date.now(), nombre: t.n.value.trim(), importe: imp, dia, busca: pal };
+      if (!$sheet.querySelector('#sVarTxt').hidden) { nuevo.variable = true; nuevo.dia = (S.perfil && Number(S.perfil.diaCobro)) || 30; }
       const n = Math.round(numero(t.c.value));
       if (!$sheet.querySelector('#sCuotas').hidden && n >= 1) {
         nuevo.cuotas = generarCuotas(proximoDia(dia, masDias(hoyIso(), -1)), n, imp, numero(t.u.value));
