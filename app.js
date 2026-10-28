@@ -1,9 +1,9 @@
-/* Brisa · v0.6.4 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.6.5 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.6.4';
+  const VERSION_APP = '0.6.5';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -178,6 +178,7 @@
       ids.add(m.id); refs.add(m.ref); nuevos.push(m);
     });
     if (nuevos.length) {
+      ahorroVistosAntiguos(nuevos);
       S.movs = S.movs.concat(nuevos).sort((a, b) => b.fecha.localeCompare(a.fecha));
       const f = nuevos.map((m) => m.fecha).sort();
       S.ultimaImportacion = { cuando: hoyIso(), ids: nuevos.map((m) => m.id), duplicados: 0, desde: f[0], hasta: f[f.length - 1], banco: true };
@@ -803,6 +804,13 @@
 
   /* ---------- Ahorro y metas ---------- */
   // Tu ahorro = saldo de partida + lo apartado (nómina, redondeos, traspasos) − lo rescatado
+  // Movimientos antiguos que llegan después de ajustar el ahorro (un Excel de meses anteriores) ya están
+  // dentro del saldo de partida: se marcan como vistos para no sumarlos ni restarlos otra vez.
+  function ahorroVistosAntiguos(nuevos) {
+    const A = S.ahorro; if (!A || !A.vistos || !A.vistos.length) return;
+    if (!A.fecha) { const v = new Set(A.vistos); A.fecha = S.movs.filter((m) => v.has(m.id)).reduce((x, m) => (m.fecha > x ? m.fecha : x), ''); }
+    for (const m of nuevos) if (m.fecha <= A.fecha) A.vistos.push(m.id);
+  }
   function ahorro() {
     const vistos = new Set(S.ahorro.vistos || []);
     const d = { nomina: 0, redondeo: 0, otros: 0, rescatado: 0 };
@@ -982,6 +990,7 @@
         if (delBanco[kb] > 0) { delBanco[kb]--; dup++; return; }
         ids.add(m.id); nuevos.push(m);
       });
+      ahorroVistosAntiguos(nuevos);
       S.movs = S.movs.concat(nuevos).sort((a, b) => b.fecha.localeCompare(a.fecha));
       const fechas = leidos.map((m) => m.fecha).sort();
       S.ultimaImportacion = { cuando: hoyIso(), ids: nuevos.map((m) => m.id), duplicados: dup, desde: fechas[0], hasta: fechas[fechas.length - 1] };
@@ -2417,7 +2426,7 @@
     if (q('#bAjustarAhorro')) q('#bAjustarAhorro').onclick = () => {
       pedirNumero('¿Cuánto tienes hoy en tu cuenta de ahorro?', Math.round(ahorro().saldo), (v) => {
         // Ese saldo ya incluye todo lo subido hasta hoy; a partir de aquí suma y resta lo nuevo
-        S.ahorro = { base: v, vistos: S.movs.map((m) => m.id) }; guardar(); toast('Ahorro ajustado');
+        S.ahorro = { base: v, vistos: S.movs.map((m) => m.id), fecha: hoyIso() }; guardar(); toast('Ahorro ajustado');
       });
     };
     if (q('#bNuevaMeta')) q('#bNuevaMeta').onclick = nuevaMeta;
