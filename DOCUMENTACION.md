@@ -176,7 +176,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 | `desconectar` | Borra la sesión |
 
 - La clave privada está solo en el secreto `ENABLE_BANKING_KEY` de Supabase.
-- La app sincroniza al abrirse si han pasado más de 2 horas.
+- La app sincroniza cada vez que se abre o se vuelve a ella, si han pasado más de 5 minutos desde la última vez.
 - La vuelta de BBVA solo se reconoce si trae `state` y la conexión se empezó desde Brisa (marca `brisa:banco-pendiente`). El enlace del correo también vuelve con `?code=`, y no hay que tocarlo.
 - Si el banco no da el saldo tras cada movimiento (BBVA no lo da), se reconstruye hacia atrás desde el saldo actual. Comprobado: cuadra con el saldo del Excel en todos los movimientos.
 - **Solo la cuenta principal** (la que más movimientos tiene, fijada en la primera sincronización) llega a Brisa. Las demás cuentas vinculadas, como la de ahorro, se guardan en `banco_movs` pero no se mezclan con los gastos.
@@ -203,6 +203,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.8.3 | 3 nov 2026 | Los movimientos de BBVA se actualizan cada vez que abres la app (si han pasado más de 5 minutos), en vez de cada 2 horas |
 | 0.8.2 | 3 nov 2026 | Movimientos: el icono de la categoría sustituye a la inicial del comercio |
 | 0.8.1 | 3 nov 2026 | Devoluciones: «Ver 30 días más» para relacionar a mano un Bizum con un gasto antiguo. Un Bizum que BBVA marca como «DEVOLUCION: COMERCIO» se propone solo con un gasto de ese comercio, hasta 60 días atrás |
 | 0.8.0 | 3 nov 2026 | Sobres en Presupuesto (Comer fuera, Compras, Ocio y planes, Free2move y Voltio): muestran lo que queda, lo guardado sale del número de cada día y se puede pasar dinero entre ellos. «¿Me lo compro?» dice si te cabe (💅), te quita ahorro (💸) o carga tus próximos meses (🤌) |

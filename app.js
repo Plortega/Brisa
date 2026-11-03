@@ -1,9 +1,9 @@
-/* Brisa · v0.8.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.8.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.8.2';
+  const VERSION_APP = '0.8.3';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -190,11 +190,13 @@
     return nuevos.length;
   }
   // banco.resultado: lo que pasó la última vez que tocaste «Actualizar» (se ve en la tarjeta de Inicio)
+  // Al abrir la app se consulta el banco, salvo que acabe de hacerse: así no se repite al ir y volver de otra app
+  const ESPERA_BANCO = 5 * 60000;
   async function sincronizarBanco(aviso) {
     if (banco.ocupado) return;
     if (!NUBE || !nube.email) { if (aviso) toast('Entra en tu cuenta (Ajustes › Tu cuenta) para traer los movimientos', 4000); return; }
     if (!S.banco || !S.banco.conectado) return;
-    banco.ocupado = true; banco.resultado = null; if (aviso) render();
+    banco.ocupado = true; banco.resultado = null; if (aviso || ruta() === 'inicio') render();
     try {
       const r = await llamarBanco('sincronizar');
       if (r.caducada) {
@@ -204,7 +206,8 @@
       const n = incorporarBanco(r);
       S.banco.ultima = Date.now(); S.banco.caducada = false; S.banco.error = null;
       banco.resultado = { ok: true, n, t: Date.now() };
-      banco.ocupado = false; guardar(); render();
+      // Sin novedades, no se repinta otra pantalla: podrías estar escribiendo
+      banco.ocupado = false; guardar(); if (n || aviso || ruta() === 'inicio') render();
       if (n || aviso) toast(n ? `✓ ${n} ${n === 1 ? 'movimiento nuevo' : 'movimientos nuevos'} de BBVA` : '✓ Todo al día: no hay movimientos nuevos', 4000);
     } catch (e) {
       console.error(e); S.banco.error = e.message; banco.resultado = { error: true, txt: 'No he podido hablar con BBVA' };
@@ -272,14 +275,14 @@
           // Al abrir: termina la conexión con BBVA si venimos de autorizar, o trae lo nuevo cada 2 horas
           if (vuelta && !vuelta.hecho) terminarConexion();
           else if (!S.banco || !S.banco.conectado) comprobarBanco();
-          else if (bancoActivo() && (!S.banco.ultima || Date.now() - S.banco.ultima > 2 * 3600000 || S.movs.some((m) => m.origen === 'banco' && !m.cuenta))) sincronizarBanco(false);
+          else if (bancoActivo() && (!S.banco.ultima || Date.now() - S.banco.ultima > ESPERA_BANCO || S.movs.some((m) => m.origen === 'banco' && !m.cuenta))) sincronizarBanco(false);
         });
       }
       else if (!nube.email && antes) render();
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') return;
-      bajar().then(() => { if (bancoActivo() && (!S.banco.ultima || Date.now() - S.banco.ultima > 2 * 3600000)) sincronizarBanco(false); });
+      bajar().then(() => { if (bancoActivo() && (!S.banco.ultima || Date.now() - S.banco.ultima > ESPERA_BANCO)) sincronizarBanco(false); });
     });
   }
 
