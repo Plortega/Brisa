@@ -203,6 +203,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.8.2 | 3 nov 2026 | Movimientos: el icono de la categoría sustituye a la inicial del comercio |
 | 0.8.1 | 3 nov 2026 | Devoluciones: «Ver 30 días más» para relacionar a mano un Bizum con un gasto antiguo. Un Bizum que BBVA marca como «DEVOLUCION: COMERCIO» se propone solo con un gasto de ese comercio, hasta 60 días atrás |
 | 0.8.0 | 3 nov 2026 | Sobres en Presupuesto (Comer fuera, Compras, Ocio y planes, Free2move y Voltio): muestran lo que queda, lo guardado sale del número de cada día y se puede pasar dinero entre ellos. «¿Me lo compro?» dice si te cabe (💅), te quita ahorro (💸) o carga tus próximos meses (🤌) |
 | 0.7.0 | 3 nov 2026 | Frenar el agujero: Inicio con «Este ciclo vas para +X €» y barras por mes; reparto de la nómina con el ahorro primero; el número es igual cada día y «¿De dónde sale?» enseña el cálculo |

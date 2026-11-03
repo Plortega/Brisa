@@ -1,9 +1,9 @@
-/* Brisa · v0.8.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.8.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.8.1';
+  const VERSION_APP = '0.8.2';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -358,6 +358,33 @@
     <span class="t"><b>${o.titulo}</b><span class="small" style="${o.subStyle || 'color:var(--muted)'}">${o.sub}</span></span>${IC.chev}</${o.href ? 'a' : 'button'}>`;
 
   /* ---------- Categorías ---------- */
+  // Icono de cada categoría, en dos tonos como el resto de la app (relleno, trazo)
+  const ICONOS_CAT = {
+    'Ingresos': ['M3.5 7.5h17v9h-17z', 'M5 7.500h14A1.500 1.500 0 0 1 20.500 9v6a1.500 1.500 0 0 1-1.500 1.500H5A1.500 1.500 0 0 1 3.500 15V9A1.500 1.500 0 0 1 5 7.500zM14.200 12a2.200 2.200 0 1 1-4.400 0 2.200 2.200 0 0 1 4.400 0zM6.500 10.500v3M17.500 10.500v3'],
+    'Ahorro': ['M5 15h14v4H5z', 'M12 4v9.500M8 9.500l4 4 4-4M5 15v2.500A1.500 1.500 0 0 0 6.500 19h11a1.500 1.500 0 0 0 1.500-1.500V15'],
+    'Rescate del ahorro': ['M5 15h14v4H5z', 'M12 13.500V4M8 8l4-4 4 4M5 15v2.500A1.500 1.500 0 0 0 6.500 19h11a1.500 1.500 0 0 0 1.500-1.500V15'],
+    'Supermercado': ['M6 7h14l-1.5 7h-11z', 'M3 4h2.200L7.500 14h11L20 7H6M10 18.500a1.200 1.200 0 1 1-2.400 0 1.200 1.200 0 0 1 2.400 0zM18.200 18.500a1.200 1.200 0 1 1-2.400 0 1.200 1.200 0 0 1 2.400 0z'],
+    'Comer fuera': ['M15 3c3 1 4 4 4 8h-4z', 'M6 3v6a2.500 2.500 0 0 0 5 0V3M8.500 3v18M15 21V3c3 1 4 4 4 8h-4'],
+    'Transporte': ['M5 5.500A1.500 1.500 0 0 1 6.500 4h11A1.500 1.500 0 0 1 19 5.500V17H5z', 'M6.500 4h11A1.500 1.500 0 0 1 19 5.500V17H5V5.500A1.500 1.500 0 0 1 6.500 4zM5 11h14M8 17v2.500M16 17v2.500M8.500 14h.01M15.500 14h.01'],
+    'Coche y gasolina': ['M5 5.500A1.500 1.500 0 0 1 6.500 4h6A1.500 1.500 0 0 1 14 5.500V20H5z', 'M6.500 4h6A1.500 1.500 0 0 1 14 5.500V20H5V5.500A1.500 1.500 0 0 1 6.500 4zM3.500 20h12M8 7.500h3v3H8zM14 12h1.500a1.500 1.500 0 0 1 1.500 1.500V16a1.500 1.500 0 0 0 3 0V9l-2.500-2.500'],
+    'Suscripciones': ['M5 12a7 7 0 0 1 12-4.900L19 9V5M19 12a7 7 0 0 1-12 4.900L5 15v4z', 'M5 12a7 7 0 0 1 12-4.900L19 9M19 5v4h-4M19 12a7 7 0 0 1-12 4.900L5 15M5 19v-4h4'],
+    'Facturas': ['M6 3.500h12v17l-3-2-3 2-3-2-3 2z', 'M6 3.500h12v17l-3-2-3 2-3-2-3 2zM9 8.500h6M9 12.500h6'],
+    'Compras': ['M5 8h14l-1.200 10.200a2 2 0 0 1-2 1.800H8.200a2 2 0 0 1-2-1.800z', 'M5 8h14l-1.200 10.200a2 2 0 0 1-2 1.800H8.200a2 2 0 0 1-2-1.800zM9 8V6.500a3 3 0 0 1 6 0V8'],
+    'Cuidado personal': ['M8.500 13h7v8h-7z', 'M8.500 13h7v8h-7zM10 13V7l4-3v9M8.500 16.500h7'],
+    'Salud': ['M12 20s-7.500-4.600-7.500-10A4.300 4.300 0 0 1 12 7.400 4.300 4.300 0 0 1 19.500 10c0 5.400-7.500 10-7.500 10z', 'M12 20s-7.500-4.600-7.500-10A4.300 4.300 0 0 1 12 7.400 4.300 4.300 0 0 1 19.500 10c0 5.400-7.500 10-7.500 10zM12 10.500v5M9.500 13h5'],
+    'Mascotas': ['M12 12c-3 0-5 2.500-5 5 0 1.500 1 2.500 2.500 2.500 1 0 1.700-.5 2.500-.5s1.500.5 2.500.5c1.500 0 2.500-1 2.500-2.500 0-2.500-2-5-5-5z', 'M12 12c-3 0-5 2.500-5 5 0 1.500 1 2.500 2.500 2.500 1 0 1.700-.5 2.500-.5s1.500.5 2.500.5c1.500 0 2.500-1 2.500-2.500 0-2.500-2-5-5-5zM5 9.500v1.500M9.500 5v2M14.500 5v2M19 9.500v1.500'],
+    'Deporte': ['M6 7h3v10H6zM15 7h3v10h-3z', 'M6 7h3v10H6zM15 7h3v10h-3zM9 12h6M3.500 10v4M20.500 10v4'],
+    'Estanco': ['M3 14h18v4H3z', 'M3 14h18v4H3zM16 14v4M17 10.500c0-2 2-2 2-4M20.500 10.500c0-2 2-2 2-4'],
+    'Ocio y planes': ['M4 8h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z', 'M4 8h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14.500 8v2M14.500 12.500v2M14.500 17v1'],
+    'Viajes': ['M10.500 4.500l1.500-1.500 1.500 1.500v5l7 4v2l-7-2v4l2 1.500v1.500l-3.500-1-3.500 1V19l2-1.500v-4l-7 2v-2l7-4z', 'M10.500 4.500l1.500-1.500 1.500 1.500v5l7 4v2l-7-2v4l2 1.500v1.500l-3.500-1-3.500 1V19l2-1.500v-4l-7 2v-2l7-4z'],
+    'Regalos': ['M5 11h14v9H5z', 'M4 7.500h16V11H4zM5 11v9h14v-9M12 7.500V20M12 7.500C10 3 6.500 4 7.500 6.500c.5 1 2.500 1 4.500 1zM12 7.500c2-4.500 5.500-3.500 4.500-1-.5 1-2.500 1-4.500 1z'],
+    'Efectivo': ['M12 3.500a8.500 8.500 0 1 0 0 17 8.500 8.500 0 1 0 0-17z', 'M12 3.500a8.500 8.500 0 1 0 0 17 8.500 8.500 0 1 0 0-17zM15.500 8.800a3.900 3.900 0 1 0 0 6.400M7.500 11h5.500M7.500 13.200h4.500'],
+    'Seguros': ['M12 3.500l7 2.500v5.500c0 4.500-3 7.500-7 9-4-1.500-7-4.500-7-9V6z', 'M12 3.500l7 2.500v5.500c0 4.500-3 7.500-7 9-4-1.500-7-4.500-7-9V6zM9 12l2.200 2.200L15.200 10'],
+    'Impuestos y comisiones': ['M4 9l8-5 8 5z', 'M4 9l8-5 8 5zM6 9v8M10 9v8M14 9v8M18 9v8M3.500 20h17M4.500 17h15'],
+    'Otra cuenta': ['M3.500 10h17v6.500a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z', 'M5.500 5.500h13a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM3.500 10h17M7 15h3'],
+    'Por revisar': ['M12 3.500a8.500 8.500 0 1 0 0 17 8.500 8.500 0 1 0 0-17z', 'M12 3.500a8.500 8.500 0 1 0 0 17 8.500 8.500 0 1 0 0-17zM9.500 9.500A2.500 2.500 0 1 1 13 12c-.7.300-1 .8-1 1.500M12 16.500h.01']
+  };
+  const iconoCat = (k) => { const i = ICONOS_CAT[k] || ICONOS_CAT['Por revisar']; return ic2(i[0], `<path d="${i[1]}"/>`, ' width="20" height="20"'); };
   function cat(m) {
     // Un Bizum que es la devolución de un gasto va con ese gasto y no cuenta como ingreso
     const gid = S.devol && S.devol[m.id];
@@ -1863,7 +1890,7 @@
     const fila = (m) => {
       const c = cat(m);
       return `<button class="mov" data-mov="${esc(m.id)}">
-        <span class="av" style="background:${COLORES[c.categoria] || 'var(--card)'};${c.categoria === 'Por revisar' ? 'border:1.5px dashed var(--rose3)' : ''}">${esc(nombreMov(m).charAt(0).toUpperCase())}</span>
+        <span class="av" style="background:${COLORES[c.categoria] || 'var(--card)'};${c.categoria === 'Por revisar' ? 'border:1.5px dashed var(--rose3)' : ''}">${iconoCat(c.categoria)}</span>
         <span class="t"><span class="n">${esc(nombreMov(m))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || 'var(--card)'}">${esc(c.categoria)}</span> ${fmtF(m.fecha)}${c.aplazado ? ' · aplazado' : ''}${c.devolucion ? ' · devolución' : ''}${devueltoDe(m.id) ? (-m.importe - devueltoDe(m.id) > 0.004 ? ' · tu parte ' + eur(-m.importe - devueltoDe(m.id), true) : ' · te salió gratis') : ''}</span></span>
         <span class="amt ${m.importe > 0 ? 'pos' : ''}">${m.importe > 0 ? '+' : ''}${eur(m.importe, true)}</span></button>`;
     };
@@ -2290,7 +2317,7 @@
 
   /* ---------- Hojas de devoluciones por Bizum ---------- */
   const filaDv = (m, extra) => `<div class="mov" style="cursor:default">
-      <span class="av" style="background:${m.importe > 0 ? 'var(--sky)' : COLORES[cat(m).categoria] || 'var(--card)'};color:${m.importe > 0 ? 'var(--sky-d)' : 'inherit'}">${m.importe > 0 ? IC.split.replace('<svg', '<svg width="20" height="20"') : esc(nombreMov(m).charAt(0).toUpperCase())}</span>
+      <span class="av" style="background:${m.importe > 0 ? 'var(--sky)' : COLORES[cat(m).categoria] || 'var(--card)'};color:${m.importe > 0 ? 'var(--sky-d)' : 'inherit'}">${m.importe > 0 ? IC.split.replace('<svg', '<svg width="20" height="20"') : iconoCat(cat(m).categoria)}</span>
       <span class="t"><span class="n">${m.importe > 0 ? 'Bizum ' + (conceptoBizum(m) ? '«' + esc(conceptoBizum(m)) + '»' : 'sin concepto') : esc(nombreMov(m))}</span><span class="xs muted">${fmtF(m.fecha)}${extra ? ' · ' + extra : ''}</span></span>
       <span class="amt ${m.importe > 0 ? 'pos' : ''}">${m.importe > 0 ? '+' : ''}${eur(m.importe, true)}</span></div>`;
   function tuParte(g, b) {
@@ -2331,7 +2358,7 @@
     $sheet.innerHTML = `
       <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">¿De qué gasto es?</div><div class="small muted">Bizum ${conceptoBizum(b) ? '«' + esc(conceptoBizum(b)) + '»' : 'sin concepto'} · +${eur(b.importe, true)} · ${fmtF(b.fecha)}</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
       ${lista.length ? `<div class="card" style="padding:4px 16px;margin-top:14px">${lista.map(({ g, c }) => `<button class="mov" data-g="${esc(g.id)}">
-        <span class="av" style="background:${COLORES[c.categoria] || 'var(--card)'}">${esc(nombreMov(g).charAt(0).toUpperCase())}</span>
+        <span class="av" style="background:${COLORES[c.categoria] || 'var(--card)'}">${iconoCat(c.categoria)}</span>
         <span class="t"><span class="n">${esc(nombreMov(g))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || 'var(--card)'}">${esc(c.categoria)}</span> ${fmtF(g.fecha)}${devueltoDe(g.id) ? ' · ya te devolvieron ' + eur(devueltoDe(g.id), true) : ''}</span></span>
         <span class="amt">${eur(g.importe, true)}</span></button>`).join('')}</div>`
       : `<p class="small muted" style="margin:16px 0">No veo gastos tuyos en los ${diasAtras} días anteriores.</p>`}
