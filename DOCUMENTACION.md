@@ -126,7 +126,7 @@ Cuando pagas tú la cuenta y tus amigas te devuelven su parte por Bizum, el gast
 - Un Bizum recibido se propone como devolución de un gasto variable de **hasta 3 días antes** (por fecha o fecha valor) y por **no más del 110 %** de lo que queda de ese gasto.
 - Si hay varios candidatos, gana el más cercano en días; ayudan que el concepto del Bizum se parezca al comercio («boltaso» → Bolt) y que el gasto sea de una categoría social (comer fuera, ocio, transporte…).
 - Si dices que sí, `variable()` resta el Bizum de ese gasto (nunca por debajo de 0), y el Bizum toma la categoría del gasto con `cuentaComoGasto: false`. Así bajan la categoría, el gasto normal, Tu semana y el presupuesto. El número del día no cambia: el saldo real ya incluía el Bizum.
-- A mano: en el detalle de un Bizum recibido, «Es una devolución de…» muestra todos los gastos de los 10 días anteriores, incluidos los cargos de fijos que varían (gasolina). Esa devolución no toca el día a día: baja lo que «llevas» de la reserva, así que el dinero vuelve a la reserva y el número del día puede bajar respecto a cuando el Bizum contaba como ingreso.
+- A mano: en el detalle de un Bizum recibido, «Es una devolución de…» muestra todos los gastos de los 10 días anteriores (con «Ver 30 días más» para ir más atrás), incluidos los cargos de fijos que varían (gasolina). Esa devolución no toca el día a día: baja lo que «llevas» de la reserva, así que el dinero vuelve a la reserva y el número del día puede bajar respecto a cuando el Bizum contaba como ingreso.
 
 ### Rescates
 Traspasos desde el ahorro. Un **rescate forzado** es solo la parte que tapa un saldo negativo: no cuenta en el límite.
@@ -203,6 +203,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.8.1 | 3 nov 2026 | Devoluciones: «Ver 30 días más» para relacionar a mano un Bizum con un gasto antiguo. Un Bizum que BBVA marca como «DEVOLUCION: COMERCIO» se propone solo con un gasto de ese comercio, hasta 60 días atrás |
 | 0.8.0 | 3 nov 2026 | Sobres en Presupuesto (Comer fuera, Compras, Ocio y planes, Free2move y Voltio): muestran lo que queda, lo guardado sale del número de cada día y se puede pasar dinero entre ellos. «¿Me lo compro?» dice si te cabe (💅), te quita ahorro (💸) o carga tus próximos meses (🤌) |
 | 0.7.0 | 3 nov 2026 | Frenar el agujero: Inicio con «Este ciclo vas para +X €» y barras por mes; reparto de la nómina con el ahorro primero; el número es igual cada día y «¿De dónde sale?» enseña el cálculo |
 | 0.6.8 | 3 nov 2026 | Apartar al ahorro: «Te sobraron» pasa a «Puedes apartar X», que tiene en cuenta extras, pagos pendientes y lo que necesitas hasta el cobro. Consejos nuevos: lo que sobra de la semana y, los últimos 3 días, lo que sobra del mes. Arreglo: los traspasos a o desde tu ahorro que llegan de BBVA conectado ya no cuentan como gasto |

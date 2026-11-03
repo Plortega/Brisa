@@ -1,9 +1,9 @@
-/* Brisa · v0.8.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.8.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.8.0';
+  const VERSION_APP = '0.8.1';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -393,7 +393,7 @@
   // S.devol[idBizum] = idGasto · S.devolNo[idBizum] = true si no es una devolución
   const esBizumRecibido = (m) => m.importe > 0 && /^bizum/i.test(String(m.concepto || '').trim());
   function conceptoBizum(m) {
-    const t = /recibido:\s*(.*)$/i.exec(m.concepto || '') || /recibido:\s*(.*)$/i.exec(m.tipo || '');
+    const t = /(?:recibido|devolucion|devolución):\s*(.*)$/i.exec(m.concepto || '') || /(?:recibido|devolucion|devolución):\s*(.*)$/i.exec(m.tipo || '');
     const s = t ? t[1].trim() : '';
     return /^sin concepto$/i.test(s) ? '' : s;
   }
@@ -414,18 +414,21 @@
   // A mano también salen los cargos de fijos que varían; solos no se proponen.
   function candidatosDevol(b, usado, manual) {
     const pb = palabras(conceptoBizum(b));
+    // BBVA marca algunos como «DEVOLUCION: COMERCIO»: ese se busca hasta 60 días atrás, solo en ese comercio
+    const esDev = /devoluci[oó]n:/i.test(b.concepto + ' ' + b.tipo);
     const out = [];
     for (const g of S.movs) {
       if (g.importe >= 0) continue;
       const ds = [g.fecha, g.fechaValor].filter(Boolean).map((f) => dias(f, b.fecha));
       const d = Math.min(...ds.map((x) => (x >= (manual ? -1 : 0) ? Math.abs(x) : 99)));
-      if (d > (manual ? 10 : 3)) continue;
+      if (d > (manual ? (typeof manual === 'number' ? manual : 10) : esDev ? 60 : 3)) continue;
       const c = cat(g); const base = manual ? baseDevolvible(g, c) : variableBase(g, c);
       if (base <= 0) continue;
       const resto = Math.round((base - devueltoDe(g.id) - ((usado || {})[g.id] || 0)) * 100) / 100;
       if (!manual && (resto <= 0 || b.importe > resto * 1.1 + 0.01)) continue;
       const nom = B.limpiar(nombreMov(g) + ' ' + g.concepto);
       const coincide = pb.some((w) => nom.includes(w.slice(0, 4)));
+      if (!manual && esDev && !coincide) continue;
       out.push({ g, c, resto, d, score: d * 10 - (coincide ? 15 : 0) + (SOCIALES.has(c.categoria) ? 0 : 6) + (b.importe > resto ? 2 : 0) });
     }
     return manual ? out.sort((a, z) => z.g.fecha.localeCompare(a.g.fecha) || a.score - z.score) : out.sort((a, z) => a.score - z.score);
@@ -2321,22 +2324,25 @@
     siguiente();
     if (!$sheet.open) $sheet.showModal();
   }
-  // Elegir a mano de qué gasto es un Bizum (los de los 10 días anteriores)
-  function elegirGasto(b, alAcabar) {
-    const lista = candidatosDevol(b, null, true);
+  // Elegir a mano de qué gasto es un Bizum: primero los de los 10 días anteriores, y más si hace falta
+  function elegirGasto(b, alAcabar, atras) {
+    const diasAtras = atras || 10;
+    const lista = candidatosDevol(b, null, diasAtras);
     $sheet.innerHTML = `
       <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">¿De qué gasto es?</div><div class="small muted">Bizum ${conceptoBizum(b) ? '«' + esc(conceptoBizum(b)) + '»' : 'sin concepto'} · +${eur(b.importe, true)} · ${fmtF(b.fecha)}</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
       ${lista.length ? `<div class="card" style="padding:4px 16px;margin-top:14px">${lista.map(({ g, c }) => `<button class="mov" data-g="${esc(g.id)}">
         <span class="av" style="background:${COLORES[c.categoria] || 'var(--card)'}">${esc(nombreMov(g).charAt(0).toUpperCase())}</span>
         <span class="t"><span class="n">${esc(nombreMov(g))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || 'var(--card)'}">${esc(c.categoria)}</span> ${fmtF(g.fecha)}${devueltoDe(g.id) ? ' · ya te devolvieron ' + eur(devueltoDe(g.id), true) : ''}</span></span>
         <span class="amt">${eur(g.importe, true)}</span></button>`).join('')}</div>`
-      : '<p class="small muted" style="margin:16px 0">No veo gastos tuyos en los 10 días anteriores.</p>'}
+      : `<p class="small muted" style="margin:16px 0">No veo gastos tuyos en los ${diasAtras} días anteriores.</p>`}
+      <button type="button" class="btn ghost" id="sMasDias" style="margin-top:10px;border:1.5px dashed var(--rose3);color:var(--berry-d)">Ver 30 días más</button>
       <p class="xs muted" style="text-align:center;margin:10px 0 0">Del gasto que elijas resto ${eur(b.importe, true)}: cuenta solo tu parte.</p>`;
     $sheet.querySelectorAll('[data-g]').forEach((x) => x.onclick = () => {
       const g = S.movs.find((m) => m.id === x.dataset.g); if (!g) return;
       enlazarDevol(b, g); toast('Restado de ' + nombreMov(g));
       if (alAcabar) alAcabar(); else { $sheet.close(); render(); }
     });
+    $sheet.querySelector('#sMasDias').onclick = () => elegirGasto(b, alAcabar, diasAtras + 30);
     if (!$sheet.open) $sheet.showModal();
   }
 
