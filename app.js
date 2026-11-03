@@ -1,9 +1,9 @@
-/* Brisa · v0.6.5 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.6.6 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.6.5';
+  const VERSION_APP = '0.6.6';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -405,7 +405,12 @@
   }
   const SOCIALES = new Set(['Comer fuera', 'Ocio y planes', 'Transporte', 'Supermercado', 'Viajes', 'Regalos', 'Compras', 'Coche y gasolina']);
   const palabras = (s) => B.limpiar(s || '').split(/[^a-zñ0-9]+/).filter((w) => w.length >= 4 && !/^(concepto|bizum|recibido|gracias)$/.test(w));
-  // Gastos de los que puede venir un Bizum: hasta 3 días antes, y que no le hayan devuelto ya todo
+  // Lo que se puede devolver de un gasto: lo variable y, además, los cargos de un fijo que varía (gasolina).
+  // Estos últimos no restan del día a día: su devolución baja lo que «llevas» de la reserva (cargosCiclo).
+  const esFijoVariable = (m) => (S.fijos || []).some((x) => x.variable && encajaFijo(x, m));
+  const baseDevolvible = (m, c) => (c.cuentaComoGasto && esFijoVariable(m) ? -m.importe : variableBase(m, c));
+  // Gastos de los que puede venir un Bizum: hasta 3 días antes, y que no le hayan devuelto ya todo.
+  // A mano también salen los cargos de fijos que varían; solos no se proponen.
   function candidatosDevol(b, usado, manual) {
     const pb = palabras(conceptoBizum(b));
     const out = [];
@@ -414,7 +419,7 @@
       const ds = [g.fecha, g.fechaValor].filter(Boolean).map((f) => dias(f, b.fecha));
       const d = Math.min(...ds.map((x) => (x >= (manual ? -1 : 0) ? Math.abs(x) : 99)));
       if (d > (manual ? 10 : 3)) continue;
-      const c = cat(g); const base = variableBase(g, c);
+      const c = cat(g); const base = manual ? baseDevolvible(g, c) : variableBase(g, c);
       if (base <= 0) continue;
       const resto = Math.round((base - devueltoDe(g.id) - ((usado || {})[g.id] || 0)) * 100) / 100;
       if (!manual && (resto <= 0 || b.importe > resto * 1.1 + 0.01)) continue;
@@ -539,7 +544,7 @@
         const cand = suyos.filter((q) => encajaFijo(x, m, esCuotas(x) ? q.importe : 0));
         if (!cand.length) continue;
         cand.sort((a, b) => Math.abs(dias(a.fecha, m.fecha)) - Math.abs(dias(b.fecha, m.fecha)));
-        cand[0].pagado += -m.importe;
+        cand[0].pagado += x.variable ? Math.max(0, -m.importe - devueltoDe(m.id)) : -m.importe;
       }
     }
     const E = S.fijosEstado || {};
@@ -2024,7 +2029,7 @@
       <span class="t"><span class="n">${m.importe > 0 ? 'Bizum ' + (conceptoBizum(m) ? '«' + esc(conceptoBizum(m)) + '»' : 'sin concepto') : esc(nombreMov(m))}</span><span class="xs muted">${fmtF(m.fecha)}${extra ? ' · ' + extra : ''}</span></span>
       <span class="amt ${m.importe > 0 ? 'pos' : ''}">${m.importe > 0 ? '+' : ''}${eur(m.importe, true)}</span></div>`;
   function tuParte(g, b) {
-    const queda = Math.round((variableBase(g, cat(g)) - devueltoDe(g.id) - (b ? b.importe : 0)) * 100) / 100;
+    const queda = Math.round((baseDevolvible(g, cat(g)) - devueltoDe(g.id) - (b ? b.importe : 0)) * 100) / 100;
     return queda <= 0 ? '<b>Te salió gratis</b>' : `Tu parte: <b>${eur(queda, true)}</b>`;
   }
   // Una sugerencia tras otra: sí / es de otro gasto / no es una devolución
@@ -2056,7 +2061,7 @@
   }
   // Elegir a mano de qué gasto es un Bizum (los de los 10 días anteriores)
   function elegirGasto(b, alAcabar) {
-    const lista = candidatosDevol(b, null, true).slice(0, 25);
+    const lista = candidatosDevol(b, null, true);
     $sheet.innerHTML = `
       <div class="row" style="align-items:flex-start"><div><div class="num" style="font-size:20px">¿De qué gasto es?</div><div class="small muted">Bizum ${conceptoBizum(b) ? '«' + esc(conceptoBizum(b)) + '»' : 'sin concepto'} · +${eur(b.importe, true)} · ${fmtF(b.fecha)}</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
       ${lista.length ? `<div class="card" style="padding:4px 16px;margin-top:14px">${lista.map(({ g, c }) => `<button class="mov" data-g="${esc(g.id)}">

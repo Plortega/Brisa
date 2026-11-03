@@ -121,7 +121,7 @@ Cuando pagas tú la cuenta y tus amigas te devuelven su parte por Bizum, el gast
 - Un Bizum recibido se propone como devolución de un gasto variable de **hasta 3 días antes** (por fecha o fecha valor) y por **no más del 110 %** de lo que queda de ese gasto.
 - Si hay varios candidatos, gana el más cercano en días; ayudan que el concepto del Bizum se parezca al comercio («boltaso» → Bolt) y que el gasto sea de una categoría social (comer fuera, ocio, transporte…).
 - Si dices que sí, `variable()` resta el Bizum de ese gasto (nunca por debajo de 0), y el Bizum toma la categoría del gasto con `cuentaComoGasto: false`. Así bajan la categoría, el gasto normal, Tu semana y el presupuesto. El número del día no cambia: el saldo real ya incluía el Bizum.
-- A mano: en el detalle de un Bizum recibido, «Es una devolución de…» muestra los gastos de los 10 días anteriores.
+- A mano: en el detalle de un Bizum recibido, «Es una devolución de…» muestra todos los gastos de los 10 días anteriores, incluidos los cargos de fijos que varían (gasolina). Esa devolución no toca el día a día: baja lo que «llevas» de la reserva, así que el dinero vuelve a la reserva y el número del día puede bajar respecto a cuando el Bizum contaba como ingreso.
 
 ### Rescates
 Traspasos desde el ahorro. Un **rescate forzado** es solo la parte que tapa un saldo negativo: no cuenta en el límite.
@@ -198,6 +198,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.6.6 | 3 nov 2026 | Devoluciones a mano: el listado ya no se corta en 25 gastos y admite cargos de fijos que varían (gasolina), que bajan lo que llevas de la reserva |
 | 0.6.5 | 28 oct 2026 | Subir un Excel de meses anteriores ya no cambia tu ahorro: lo anterior al último ajuste del saldo se da por incluido |
 | 0.6.4 | 28 oct 2026 | Arreglo: Brasal (restaurante coreano) ya no se toma por un taller |
 | 0.6.3 | 28 oct 2026 | Fijos que varían cada mes (gasolina): se reserva un importe al cobrar, cada cargo sale de ahí y no del día a día ni del mes típico, y avisa si te pasas. Taller, ITV y neumáticos van solos a extras |
