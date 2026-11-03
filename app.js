@@ -1,9 +1,9 @@
-/* Brisa · v0.8.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.8.4 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.8.3';
+  const VERSION_APP = '0.8.4';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -675,7 +675,7 @@
     const P = plan(inicio, fin, H);
     const fijosC = cargosCiclo(inicio, fin);
     const pendiente = fijosC.reduce((a, f) => a + f.pendiente, 0);
-    let gastado = 0, rescates = 0, forzados = 0, apartado = 0; const porCat = {}; const grandes = [];
+    let gastado = 0, gastoHoy = 0, rescates = 0, forzados = 0, apartado = 0; const porCat = {}; const grandes = [];
     const sobres = sobresDelCiclo(inicio);
     for (const m of S.movs.filter((x) => x.fecha >= inicio)) {
       const c = cat(m);
@@ -683,7 +683,7 @@
       if (c.categoria === 'Ahorro' && m.importe < 0 && !/redondeo/.test(B.limpiar(m.concepto + ' ' + m.tipo))) apartado -= m.importe;
       // Los gastos grandes y puntuales se avisan aparte: no gastan tu presupuesto del día a día
       if (esGrande(m, c)) grandes.push(m);
-      else { gastado += v; if (v > 0) { porCat[c.categoria] = (porCat[c.categoria] || 0) + v; const sb = sobres.find((x) => sobreDeMov(x, m, c)); if (sb) sb.usado += v; } }
+      else { gastado += v; if (v > 0) { porCat[c.categoria] = (porCat[c.categoria] || 0) + v; const sb = sobres.find((x) => sobreDeMov(x, m, c)); if (sb) sb.usado += v; else if ((m.fechaValor || m.fecha) === hoy) gastoHoy += v; } }
       if (c.categoria === 'Rescate del ahorro' && m.importe > 0) {
         rescates += m.importe;
         // Solo la parte que tapa los números rojos es forzada; el resto es un rescate normal
@@ -712,16 +712,17 @@
     const libre = Math.max(0, modoSaldo ? Math.min(queda - reservaSobres, disponible - reservaSobres) : queda - reservado - reservaSobres);
     // v0.7.0: el dinero libre se reparte a partes iguales entre los días que quedan hasta el cobro
     const lista = []; for (let k = 0; k < restantes; k++) lista.push(masDias(hoy, k));
-    const pesoDe = () => 1;
-    const sumaP = lista.reduce((a, f) => a + pesoDe(f), 0) || 1;
-    const reparto = lista.map((f) => ({ fecha: f, importe: libre * pesoDe(f) / sumaP }));
-    const hoyPuedes = reparto[0] ? reparto[0].importe : 0;
+    // Lo de hoy se fija al empezar el día y baja con cada gasto; lo que sobre o falte se reparte en los días siguientes
+    const hoyInicio = (libre + gastoHoy) / restantes;
+    const hoyPuedes = Math.max(0, hoyInicio - gastoHoy);
+    const resto = restantes > 1 ? (libre - hoyPuedes) / (restantes - 1) : 0;
+    const reparto = lista.map((f, i) => ({ fecha: f, importe: i === 0 ? hoyPuedes : resto }));
     // El finde: de viernes a domingo (el que viene, o el que estás viviendo)
     const dw = aDate(hoy).getDay();
     const aViernes = dw === 0 || dw >= 5 ? 0 : 5 - dw;
     const finde = reparto.filter((r) => { const d = dias(hoy, r.fecha); const w = aDate(r.fecha).getDay(); return d >= aViernes && d <= aViernes + 2 && (w === 5 || w === 6 || w === 0); });
     return { inicio, fin, restantes, gastado, rescates, forzados, porCat, presupuesto, ahorro: P.paraTi, P, H, queda, hoyPuedes,
-      sobres, reservaSobres, presuBase, objetivo, apartado, ahorroPend, modoSaldo, retenido, reservado, reservas, saldo: ult ? ult.saldo : null, saldoFecha: ult ? ult.fecha : null, pendiente, fijosC, disponible, libre,
+      gastoHoy, hoyInicio, sobres, reservaSobres, presuBase, objetivo, apartado, ahorroPend, modoSaldo, retenido, reservado, reservas, saldo: ult ? ult.saldo : null, saldoFecha: ult ? ult.fecha : null, pendiente, fijosC, disponible, libre,
       reparto, finde, findeTotal: finde.reduce((a, r) => a + r.importe, 0), grandes };
   }
 
@@ -923,7 +924,7 @@
     const margen = margenExtras(c);
     const rescate = Math.max(0, Math.round((enCiclo - margen) * 100) / 100);
     const left = Math.max(0, c.libre - rescate);
-    const diario = left / Math.max(1, c.restantes);
+    const diario = Math.max(0, (left + c.gastoHoy) / Math.max(1, c.restantes) - c.gastoHoy);
     const B = Math.max(1, c.presupuesto);
     const kind = rescate <= 0 ? 'go' : modo !== 'plazos' && A <= B * 0.25 ? 'next' : 'rescue';
     return { enCiclo, left, diario, kind, rescate, B, margen };
@@ -1255,6 +1256,7 @@
       ${PIX.big.replace(/style="[^"]*"/, 'style="top:18px;right:20px"')}${PIX.spark.replace(/style="[^"]*"/, 'style="top:66px;right:30px"')}
       <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">HOY PUEDES GASTAR</div>
       <div class="big" style="margin:8px 0 10px">${eur(c.hoyPuedes)}</div>
+      ${c.gastoHoy > 0 ? `<div class="small" style="color:var(--t-hero);margin:-4px 0 10px">De ${eur(c.hoyInicio)} · hoy llevas ${eur(c.gastoHoy)}${c.gastoHoy > c.hoyInicio ? `: te has pasado ${eur(c.gastoHoy - c.hoyInicio)}` : ''}</div>` : ''}
       ${c.modoSaldo && c.disponible <= 0 ? '<div style="font-size:13px;line-height:1.5;color:var(--t-hero);margin-bottom:10px">Ojo: tus pagos pendientes superan tu saldo.</div>' : ''}
       <div class="hearts" role="img" aria-label="Te quedan ${n} de 10 corazones: ${eur(c.libre)} libres de ${eur(c.presupuesto)}">${corazones(n, 21, 18)}</div>
       <div class="row small" style="color:var(--t-hero2);margin-top:8px"><span style="white-space:nowrap">Te quedan ${n} de 10 ♡ · ${eur(c.libre)}</span><span style="white-space:nowrap">Hasta el ${aDate(c.fin).getDate()} · ${c.restantes} días</span></div>
@@ -1453,7 +1455,7 @@
     $sheet.innerHTML = `<div class="row" style="align-items:flex-start"><div class="num" style="font-size:22px">¿De dónde salen ${eur(c.hoyPuedes)}?</div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
       ${caja(!mandaCuenta, `<div class="small" style="font-weight:800;margin-bottom:4px">1 · Tu presupuesto</div>${lin('Tu día a día del mes', eur(c.presupuesto))}${lin('Ya gastado', '−' + eur(c.gastado))}${c.reservaSobres ? lin('Guardado en tus sobres', '−' + eur(c.reservaSobres)) : ''}${!c.modoSaldo && c.reservado ? lin('Reservado', '−' + eur(c.reservado)) : ''}${lin('Te queda', firmado(quedaP).replace('+', ''), true)}`)}
       ${c.modoSaldo ? caja(mandaCuenta, `<div class="small" style="font-weight:800;margin-bottom:4px">2 · Tu cuenta</div>${lin('Saldo', eur(c.saldo))}${lin('Pagos que faltan', '−' + eur(c.pendiente))}${c.retenido ? lin('Retenido', '−' + eur(c.retenido)) : ''}${c.reservado ? lin('Reservado', '−' + eur(c.reservado)) : ''}${c.ahorroPend ? lin('Ahorro por pasar', '−' + eur(c.ahorroPend)) : ''}${c.reservaSobres ? lin('Guardado en tus sobres', '−' + eur(c.reservaSobres)) : ''}${lin('Te queda', firmado(cuentaP).replace('+', ''), true)}`) : ''}
-      <div class="small" style="background:var(--rose);border-radius:20px;padding:12px 16px;margin-top:10px;line-height:1.45"><b>Uso la cifra más baja:</b> ${eur(c.libre)} entre ${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} = ${eur(c.hoyPuedes)} al día.</div>
+      <div class="small" style="background:var(--rose);border-radius:20px;padding:12px 16px;margin-top:10px;line-height:1.45"><b>Uso la cifra más baja:</b> ${c.gastoHoy > 0 ? `${eur(c.libre + c.gastoHoy)} entre ${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} = ${eur(c.hoyInicio)} para hoy. Hoy llevas ${eur(c.gastoHoy)}, así que te quedan ${eur(c.hoyPuedes)}.` : `${eur(c.libre)} entre ${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} = ${eur(c.hoyPuedes)} al día.`}</div>
       <p class="small muted" style="line-height:1.45;margin:10px 0 0">${mandaCuenta ? 'Este mes manda tu cuenta: si lo sigues, llegas al cobro sin números rojos.' : c.modoSaldo ? `Si lo sigues, llegas al cobro con ${eur(margenExtras(c))} de sobra.` : 'Aún no tengo tu saldo de este ciclo: uso tu presupuesto.'} Los extras no van en este número: si gastas en uno, el número baja.</p>`;
     $sheet.onclick = (e) => { if (e.target.closest('#sCerrar') || e.target === $sheet) $sheet.close(); };
     $sheet.showModal();

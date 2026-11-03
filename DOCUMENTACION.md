@@ -110,7 +110,7 @@ libre = mín(día a día − gastado − reservado,
             saldo − fijos pendientes − retenido − reservado)
 ```
 
-El dinero libre se reparte **a partes iguales** entre los días hasta el cobro (v0.7.0). Lo de hoy es «Hoy puedes gastar», y «¿De dónde sale?» enseña la resta completa. La tarjeta del finde suma viernes, sábado y domingo.
+El dinero libre se reparte **a partes iguales** entre los días hasta el cobro (v0.7.0). Lo de hoy se fija con lo que había al empezar el día y baja con cada gasto del día a día de hoy (por fecha valor; los fijos, extras y sobres no cuentan). «¿De dónde sale?» enseña la resta completa. La tarjeta del finde suma viernes, sábado y domingo.
 
 Lo que decides apartar al cobrar (`S.aparta[inicioCiclo] = {ahorro, hecho, fecha}`) se descuenta del saldo hasta que Brisa ve el traspaso. El resultado del ciclo (`resultadoPrevisto`) es lo que entra menos lo gastado (el ahorro y las cuentas propias no cuentan), menos los pagos pendientes y el dinero libre: lo que quedaría si sigues el número.
 
@@ -203,6 +203,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.8.4 | 3 nov 2026 | «Hoy puedes gastar» baja con lo que gastas hoy, en vez de repartir el gasto entre todos los días hasta el cobro |
 | 0.8.3 | 3 nov 2026 | Los movimientos de BBVA se actualizan cada vez que abres la app (si han pasado más de 5 minutos), en vez de cada 2 horas |
 | 0.8.2 | 3 nov 2026 | Movimientos: el icono de la categoría sustituye a la inicial del comercio |
 | 0.8.1 | 3 nov 2026 | Devoluciones: «Ver 30 días más» para relacionar a mano un Bizum con un gasto antiguo. Un Bizum que BBVA marca como «DEVOLUCION: COMERCIO» se propone solo con un gasto de ese comercio, hasta 60 días atrás |
