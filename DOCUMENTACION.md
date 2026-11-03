@@ -63,6 +63,8 @@ Un único objeto JSON, guardado con `guardar()`:
 | `deseos` | Lista de deseos: `{ id, nombre, importe, creado }`. |
 | `devol` | Devoluciones por Bizum: `idBizum → idGasto`. Ese Bizum se resta del gasto y no cuenta como ingreso. |
 | `fueraViaje` | Gastos en las fechas de un viaje que no son de ese viaje (`idMov → true`). Pueden seguir en extras (`extras`) o contar como gasto normal. |
+| `sobres` | `{desde, lista: [{id, importe}], mover: {inicioCiclo: {id: ±importe}}}`. Lo que queda en cada sobre sale del dinero libre; lo que se pasa de un sobre a otro vale solo para ese ciclo. |
+| `aparta` | Lo que decides apartar al cobrar, por ciclo: `{inicioCiclo: {ahorro, hecho, fecha}}`. |
 | `devolNo` | Bizum recibidos que la persona dijo que no son devoluciones (`idBizum → true`): no se vuelven a proponer. |
 | `plan` | Topes por categoría aplicados desde Presupuesto. |
 | `banco` | `{ conectado, hasta, ultima, caducada, error, cuentas }` si BBVA está conectado. |
@@ -201,6 +203,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.8.0 | 3 nov 2026 | Sobres en Presupuesto (Comer fuera, Compras, Ocio y planes, Free2move y Voltio): muestran lo que queda, lo guardado sale del número de cada día y se puede pasar dinero entre ellos. «¿Me lo compro?» dice si te cabe (💅), te quita ahorro (💸) o carga tus próximos meses (🤌) |
 | 0.7.0 | 3 nov 2026 | Frenar el agujero: Inicio con «Este ciclo vas para +X €» y barras por mes; reparto de la nómina con el ahorro primero; el número es igual cada día y «¿De dónde sale?» enseña el cálculo |
 | 0.6.8 | 3 nov 2026 | Apartar al ahorro: «Te sobraron» pasa a «Puedes apartar X», que tiene en cuenta extras, pagos pendientes y lo que necesitas hasta el cobro. Consejos nuevos: lo que sobra de la semana y, los últimos 3 días, lo que sobra del mes. Arreglo: los traspasos a o desde tu ahorro que llegan de BBVA conectado ya no cuentan como gasto |
 | 0.6.7 | 3 nov 2026 | «No es de este viaje» en el detalle de un gasto: se saca del viaje y sigue como extra aparte o pasa a gasto normal |
