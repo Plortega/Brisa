@@ -1,9 +1,9 @@
-/* Brisa · v0.6.6 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.6.7 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.6.6';
+  const VERSION_APP = '0.6.7';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -89,7 +89,7 @@
     // v0.4.9: Brisa te recomienda
     // v0.5.0: extras y viajes
     S.compartidoNo = S.compartidoNo || {};
-    S.viajes = S.viajes || []; S.extras = S.extras || {}; S.puntualNo = S.puntualNo || {};
+    S.viajes = S.viajes || []; S.fueraViaje = S.fueraViaje || {}; S.extras = S.extras || {}; S.puntualNo = S.puntualNo || {};
     S.consejos = S.consejos || {}; ['no', 'tipoNo', 'cancelados'].forEach((k) => (S.consejos[k] = S.consejos[k] || {}));
     S.reglas = S.reglas || { reglasUsuario: {}, palabras: [], importes: [] };
     S.reglas.reglasUsuario = S.reglas.reglasUsuario || {}; S.reglas.palabras = S.reglas.palabras || []; S.reglas.importes = S.reglas.importes || [];
@@ -447,7 +447,9 @@
   // y lo que marcas tú como «algo puntual» (S.extras[id]).
   // Taller, ITV, neumáticos…: siempre extra (la gasolina va aparte, como gasto necesario)
   const TALLER = /norauto|taller|\bitv\b|neumatic|feu vert|midas|euromaster|speedy|aurgi|confort auto|first stop|carglass|recambio|mecanic/;
-  const enViaje = (m) => (S.viajes || []).find((v) => { const f = m.fechaValor || m.fecha; return f >= v.desde && f <= v.hasta; });
+  const viajeDeFecha = (m) => (S.viajes || []).find((v) => { const f = m.fechaValor || m.fecha; return f >= v.desde && f <= v.hasta; });
+  // S.fueraViaje[id] (v0.6.7): cae en las fechas de un viaje, pero no es de ese viaje
+  const enViaje = (m) => ((S.fueraViaje || {})[m.id] ? undefined : viajeDeFecha(m));
   function motivoExtra(m, c) {
     if (!c.cuentaComoGasto || deFijo(m) || variable(m, c) <= 0) return null;
     if (S.extras && S.extras[m.id]) return 'Lo marcaste como algo puntual';
@@ -1963,10 +1965,14 @@
   /* ---------- Hoja para cambiar la categoría ---------- */
   function botonExtra(m, c) {
     if (m.importe >= 0 || !c.cuentaComoGasto || deFijo(m) || variable(m, c) <= 0) return '';
-    if (S.extras[m.id]) return `<button class="btn ghost" id="sExtra" style="margin-top:12px">Ya no es algo puntual</button><p class="xs muted" style="margin:6px 0 0;text-align:center">Ahora está en extras: no cuenta en tu mes típico.</p>`;
+    const vf = viajeDeFecha(m);
+    const enlaceViaje = !vf ? '' : (S.fueraViaje || {})[m.id]
+      ? `<p class="small" style="text-align:center;margin:10px 0 0"><a href="#movimientos" id="sVolverViaje">Sí es de «${esc(vf.nombre)}»</a></p>`
+      : `<button class="btn ghost" id="sFuera" style="margin-top:10px">No es de «${esc(vf.nombre)}»</button>`;
+    if (S.extras[m.id]) return `<button class="btn ghost" id="sExtra" style="margin-top:12px">Ya no es algo puntual</button><p class="xs muted" style="margin:6px 0 0;text-align:center">Ahora está en extras: no cuenta en tu mes típico.</p>${enlaceViaje}`;
     const mot = motivoExtra(m, c);
-    if (mot) return `<p class="small" style="margin:12px 0 0;background:var(--lilac);color:var(--lilac-d);border-radius:14px;padding:8px 12px">Cuenta como extra: ${esc(mot.charAt(0).toLowerCase() + mot.slice(1))}.</p>`;
-    return `<button class="btn ghost" id="sExtra" style="margin-top:12px">${IC.plane.replace('<svg', '<svg width="18" height="18" style="vertical-align:-4px;margin-right:6px;color:var(--lilac-d)"')}Es algo puntual (pasa a extras)</button>`;
+    if (mot) return `<p class="small" style="margin:12px 0 0;background:var(--lilac);color:var(--lilac-d);border-radius:14px;padding:8px 12px">Cuenta como extra: ${esc(mot.charAt(0).toLowerCase() + mot.slice(1))}.</p>${enlaceViaje}`;
+    return `<button class="btn ghost" id="sExtra" style="margin-top:12px">${IC.plane.replace('<svg', '<svg width="18" height="18" style="vertical-align:-4px;margin-right:6px;color:var(--lilac-d)"')}Es algo puntual (pasa a extras)</button>${enlaceViaje}`;
   }
   function abrirMov(id) {
     const m = S.movs.find((x) => x.id === id); if (!m) return;
@@ -2007,6 +2013,28 @@
       if (b) { elegida = b.dataset.cat; const r = $sheet.querySelector('#sRecordar').checked; dibujar(); $sheet.querySelector('#sRecordar').checked = r; return; }
       if (e.target.closest('#sCerrar') || e.target === $sheet) { $sheet.close(); return; }
       if (e.target.closest('#sEsDevol')) { elegirGasto(m); return; }
+      if (e.target.closest('#sFuera')) {
+        const v = viajeDeFecha(m);
+        $sheet.innerHTML = `<div class="num" style="font-size:20px;margin-bottom:4px">No es de «${esc(v.nombre)}»</div>
+          <p class="small muted" style="margin:0 0 14px;line-height:1.5">${esc(nombreMov(m))} · ${eur(m.importe, true)}. ¿Cómo lo cuento?</p>
+          <button class="btn" id="fvExtra">Extra, aparte del viaje</button>
+          <p class="xs muted" style="margin:6px 0 14px;text-align:center">No cuenta en tu mes típico ni en tus topes.</p>
+          <button class="btn ghost" id="fvNormal">Gasto normal</button>
+          <p class="xs muted" style="margin:6px 0 14px;text-align:center">Cuenta en su categoría, en tu tope y en tu día a día.</p>
+          <p style="text-align:center;margin:0" class="small"><a href="#movimientos" id="fvCancel">Cancelar</a></p>`;
+        return;
+      }
+      if (e.target.closest('#fvCancel')) { e.preventDefault(); dibujar(); return; }
+      if (e.target.closest('#fvExtra') || e.target.closest('#fvNormal')) {
+        const ext = !!e.target.closest('#fvExtra');
+        S.fueraViaje[m.id] = true;
+        if (ext) S.extras[m.id] = true; else delete S.extras[m.id];
+        guardar(); $sheet.close(); render(); toast(ext ? 'Sigue en extras, fuera del viaje' : 'Ahora es un gasto normal'); return;
+      }
+      if (e.target.closest('#sVolverViaje')) {
+        e.preventDefault(); delete S.fueraViaje[m.id]; delete S.extras[m.id];
+        guardar(); $sheet.close(); render(); toast('Vuelve al viaje'); return;
+      }
       if (e.target.closest('#sExtra')) {
         if (S.extras[m.id]) { delete S.extras[m.id]; toast('Vuelve a contar como gasto normal'); } else { S.extras[m.id] = true; toast('Pasa a extras: no cuenta en tu mes típico'); }
         guardar(); $sheet.close(); render(); return;

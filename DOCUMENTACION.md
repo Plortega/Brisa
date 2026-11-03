@@ -62,6 +62,7 @@ Un único objeto JSON, guardado con `guardar()`:
 | `reservas` | Compras de «¿Me lo compro?» pendientes de aparecer: `{ id, nombre, importe, fecha }`. |
 | `deseos` | Lista de deseos: `{ id, nombre, importe, creado }`. |
 | `devol` | Devoluciones por Bizum: `idBizum → idGasto`. Ese Bizum se resta del gasto y no cuenta como ingreso. |
+| `fueraViaje` | Gastos en las fechas de un viaje que no son de ese viaje (`idMov → true`). Pueden seguir en extras (`extras`) o contar como gasto normal. |
 | `devolNo` | Bizum recibidos que la persona dijo que no son devoluciones (`idBizum → true`): no se vuelven a proponer. |
 | `plan` | Topes por categoría aplicados desde Presupuesto. |
 | `banco` | `{ conectado, hasta, ultima, caducada, error, cuentas }` si BBVA está conectado. |
@@ -198,6 +199,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.6.7 | 3 nov 2026 | «No es de este viaje» en el detalle de un gasto: se saca del viaje y sigue como extra aparte o pasa a gasto normal |
 | 0.6.6 | 3 nov 2026 | Devoluciones a mano: el listado ya no se corta en 25 gastos y admite cargos de fijos que varían (gasolina), que bajan lo que llevas de la reserva |
 | 0.6.5 | 28 oct 2026 | Subir un Excel de meses anteriores ya no cambia tu ahorro: lo anterior al último ajuste del saldo se da por incluido |
 | 0.6.4 | 28 oct 2026 | Arreglo: Brasal (restaurante coreano) ya no se toma por un taller |
