@@ -1,9 +1,9 @@
-/* Brisa · v0.6.7 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.6.8 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.6.7';
+  const VERSION_APP = '0.6.8';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -680,6 +680,14 @@
     return { inicio, fin, restantes, gastado, rescates, forzados, porCat, presupuesto, ahorro: P.paraTi, P, H, queda, hoyPuedes,
       modoSaldo, retenido, reservado, reservas, saldo: ult ? ult.saldo : null, saldoFecha: ult ? ult.fecha : null, pendiente, fijosC, disponible, libre,
       reparto, finde, findeTotal: finde.reduce((a, r) => a + r.importe, 0), grandes };
+  }
+
+  // Lo que se puede apartar de verdad (v0.6.8): lo que queda tras tus pagos pendientes
+  // y tras guardar tu presupuesto del día a día para los días que faltan hasta el cobro
+  function margenApartar(c) {
+    if (!c.modoSaldo) return 0;
+    const diario = c.presupuesto / Math.max(1, dias(c.inicio, c.fin));
+    return Math.max(0, Math.floor(c.disponible - diario * c.restantes));
   }
 
   /* ---------- Compras a plazos ---------- */
@@ -1377,6 +1385,20 @@
     if (usado > S.limiteRescates && S.limiteRescates > 0) L.push({ clave: 'resc|' + c.fin, tipo: 'rescates', prio: 40, icon: IC.uturn, etiqueta: 'RESCATES',
       titulo: `Has rescatado ${eur(usado)} este mes`, sub: `Tu límite es ${eur(S.limiteRescates)}. Si te pasa cada mes, es mejor apartar menos y no tocarlo.`,
       corto: `Tu límite es ${eur(S.limiteRescates)}`, acciones: [['ok', 'Entendido'], ['#metas', 'Ver metas', 1]], nunca: true });
+    // 8 · Lo que puedes pasar a tu ahorro: al final del mes, o lo que sobró esta semana
+    const margen = margenApartar(c);
+    const hechos = [['ok', 'Ahora no'], ['ok', 'Ya lo pasé', 1]];
+    if (c.restantes <= 3) {
+      if (margen > 5) L.push({ clave: 'apartarmes|' + c.fin, tipo: 'apartar', prio: 75, icon: IC.spark, etiqueta: 'FIN DE MES',
+        titulo: `Te sobran ${eur(margen)} de este mes`, sub: `Ya he descontado tus pagos pendientes y lo que necesitas hasta el ${dCobro}. Pásalos a tu ahorro en la app de BBVA antes de cobrar.`,
+        corto: 'Pásalos a tu ahorro antes de cobrar', acciones: hechos, nunca: true });
+    } else {
+      const sem = datosSemana();
+      const dw = (aDate(hoy).getDay() + 6) % 7; // lunes = 0: el consejo se silencia por semana
+      if (sem.rescates <= 0 && sem.apartable > 5) L.push({ clave: 'apartar|' + masDias(hoy, -dw), tipo: 'apartar', prio: 35, icon: IC.spark, etiqueta: 'TE SOBRÓ ESTA SEMANA',
+        titulo: `Puedes apartar ${eur(sem.apartable)}`, sub: `Te sobraron esta semana y no te hacen falta hasta el ${dCobro}: ya he descontado tus pagos pendientes y tu día a día. Pásalos a tu ahorro en la app de BBVA.`,
+        corto: 'Pásalos a tu ahorro en la app de BBVA', acciones: hechos, nunca: true });
+    }
     const vivos = todos ? L : L.filter((k) => !C.no[k.clave] && !C.tipoNo[k.tipo]);
     return vivos.sort((a, b) => b.prio - a.prio);
   }
@@ -1507,14 +1529,15 @@
     const fv = (m) => m.fechaValor || m.fecha;
     const fin = S.movs.reduce((a, m) => (fv(m) > a ? fv(m) : a), S.movs[0].fecha);
     const ini = masDias(fin, -6), ini0 = masDias(fin, -13), fin0 = masDias(fin, -7);
-    let gasto = 0, gasto0 = 0, rescates = 0; const porCat = {}; const grandes = [];
+    let gasto = 0, gasto0 = 0, rescates = 0, extras = 0, apartado = 0; const porCat = {}; const grandes = [];
     for (const m of S.movs) {
       const f = fv(m); if (f < ini0 || f > fin) continue;
       const k = cat(m); const v = variable(m, k);
       if (f >= ini) {
+        if (k.categoria === 'Ahorro' && m.importe < 0 && !/redondeo/.test(B.limpiar(m.concepto + ' ' + m.tipo))) apartado -= m.importe;
         if (k.categoria === 'Rescate del ahorro' && m.importe > 0) rescates += m.importe - (typeof m.saldo === 'number' ? Math.min(m.importe, Math.max(0, m.importe - m.saldo)) : 0);
         if (v <= 0) continue;
-        if (esGrande(m, k)) { grandes.push(m); continue; }
+        if (esGrande(m, k)) { grandes.push(m); extras += v; continue; }
         gasto += v;
         const partes = k.reparto ? k.reparto.filter((p) => !esFijo(m, k, p.categoria)) : [{ categoria: k.categoria, importe: -v }];
         for (const p of partes) porCat[p.categoria] = (porCat[p.categoria] || 0) - p.importe;
@@ -1524,7 +1547,10 @@
     const top = Object.entries(porCat).sort((a, b) => b[1] - a[1])[0] || null;
     const semanal = c.presupuesto * 7 / 30.4;
     const topes = topesActivos(c);
-    return { c, ini, fin, gasto, gasto0, rescates, grandes, top, semanal, topes };
+    // Lo que sobró de verdad: también cuentan los extras y lo que ya has apartado esta semana
+    const sobra = semanal - gasto - extras;
+    const apartable = Math.floor(Math.min(sobra - apartado, margenApartar(c)));
+    return { c, ini, fin, gasto, gasto0, rescates, grandes, top, semanal, topes, sobra, apartado, apartable };
   }
   function tarjetasSemana() {
     const d = datosSemana(); const c = d.c;
@@ -1548,11 +1574,15 @@
     cards.push({ tag: 'APRENDE EN 20 SEGUNDOS', bg: 'var(--butter)', tc: 'var(--butter-d)', t: ct, b: cb, big: null });
     const meta = ahorro().metas.find((x) => x.ahorrado < x.objetivo);
     const bigMeta = meta ? [esc(meta.nombre), `${eur(meta.ahorrado)} / ${eur(meta.objetivo)}`] : null;
-    const sobra = d.semanal - d.gasto;
+    const sobra = d.sobra;
     if (d.rescates > 0) cards.push({ tag: 'TU SIGUIENTE PASO', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Esta semana<br>rescataste ' + eur(d.rescates),
       b: 'La semana que viene, intenta dejar el ahorro quieto. Si algo te tienta, pregúntaselo antes a Brisa en «¿Me lo compro?».', big: ['Rescates del mes', `${eur(c.rescates - c.forzados)} / ${eur(S.limiteRescates)}`] });
-    else if (sobra > 5) cards.push({ tag: 'TU SIGUIENTE PASO', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Te sobraron<br>' + eur(sobra),
-      b: 'Si los pasas a tu ahorro en la app de BBVA antes del finde, no se gastan solos. Brisa lo verá en tu próximo Excel.', big: bigMeta });
+    else if (d.apartable > 5) cards.push({ tag: 'TU SIGUIENTE PASO', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Puedes apartar<br>' + eur(d.apartable),
+      b: `Te sobraron esta semana y no te hacen falta hasta el ${aDate(c.fin).getDate()}: ya he descontado tus pagos pendientes y tu día a día. Pásalos a tu ahorro en la app de BBVA.`, big: bigMeta });
+    else if (d.apartado > 0) cards.push({ tag: 'TU SIGUIENTE PASO', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Ya apartaste<br>' + eur(d.apartado),
+      b: 'Esta semana ya has pasado dinero a tu ahorro. Si te hace falta antes del cobro, mejor mover lo justo que quedarte en negativo.', big: ['Hoy puedes gastar', eur(c.hoyPuedes)] });
+    else if (sobra > 5) cards.push({ tag: 'TU SIGUIENTE PASO', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Buena semana,<br>pero espera',
+      b: `Gastaste ${eur(sobra)} menos que tu ritmo, pero te hacen falta hasta el ${aDate(c.fin).getDate()} para tus pagos y tu día a día. Si al final del mes sobra algo, te aviso para apartarlo.`, big: ['Hoy puedes gastar', eur(c.hoyPuedes)] });
     else cards.push({ tag: 'TU SIGUIENTE PASO', bg: 'var(--mint)', tc: 'var(--mint-d)', t: 'Semana<br>movida',
       b: `Te pasaste ${eur(-sobra)} de tu ritmo. Ya lo he repartido entre los días que quedan hasta el ${aDate(c.fin).getDate()}.`, big: ['Hoy puedes gastar', eur(c.hoyPuedes)] });
     return cards;

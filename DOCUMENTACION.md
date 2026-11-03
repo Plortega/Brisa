@@ -199,6 +199,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.6.8 | 3 nov 2026 | Apartar al ahorro: «Te sobraron» pasa a «Puedes apartar X», que tiene en cuenta extras, pagos pendientes y lo que necesitas hasta el cobro. Consejos nuevos: lo que sobra de la semana y, los últimos 3 días, lo que sobra del mes. Arreglo: los traspasos a o desde tu ahorro que llegan de BBVA conectado ya no cuentan como gasto |
 | 0.6.7 | 3 nov 2026 | «No es de este viaje» en el detalle de un gasto: se saca del viaje y sigue como extra aparte o pasa a gasto normal |
 | 0.6.6 | 3 nov 2026 | Devoluciones a mano: el listado ya no se corta en 25 gastos y admite cargos de fijos que varían (gasolina), que bajan lo que llevas de la reserva |
 | 0.6.5 | 28 oct 2026 | Subir un Excel de meses anteriores ya no cambia tu ahorro: lo anterior al último ajuste del saldo se da por incluido |

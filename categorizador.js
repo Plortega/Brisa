@@ -170,10 +170,11 @@ function categorizar(mov, opts = {}) {
   // { categoria, aplazado, terminado: 'AAAA-MM' } para pagos a plazos ya acabados.
   if (regla) return r(typeof regla === 'string' ? regla : regla.categoria, 1, 'Lo aprendí de ti');
 
-  // 2. Traspasos entre tus propias cuentas (BBVA los llama «Traspaso desde/a cuenta»)
+  // 2. Traspasos entre tus propias cuentas (BBVA los llama «Traspaso desde/a cuenta»;
+  //    conectado, «TRASPASO // TRASPASO A CUENTA // nombre»)
   const c0 = clave(mov.concepto);
-  if (/^traspaso desde cuenta/.test(c0)) return r('Rescate del ahorro', 0.95, 'Dinero que vuelve de tu otra cuenta');
-  if (/^traspaso (a cuenta|programa)/.test(c0)) return r('Ahorro', 0.95, 'Dinero que mandas a tu ahorro');
+  if (/^(traspaso\W+)?traspaso desde cuenta/.test(c0)) return r('Rescate del ahorro', 0.95, 'Dinero que vuelve de tu otra cuenta');
+  if (/^(traspaso\W+)?traspaso (a cuenta|programa)/.test(c0)) return r('Ahorro', 0.95, 'Dinero que mandas a tu ahorro');
   if (titular && texto.includes(titular)) {
     return mov.importe > 0 ? r('Rescate del ahorro', 0.95, 'Dinero que vuelve de tu otra cuenta')
                            : r('Ahorro', 0.95, 'Dinero que mandas a tu otra cuenta');
