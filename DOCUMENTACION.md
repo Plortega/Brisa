@@ -108,7 +108,9 @@ libre = mín(día a día − gastado − reservado,
             saldo − fijos pendientes − retenido − reservado)
 ```
 
-El dinero libre se reparte entre los días hasta el cobro según el **peso de cada día de la semana** (cuánto se suele gastar ese día, por fecha valor, entre 0,5 y 2). Lo de hoy es «Hoy puedes gastar». La tarjeta del finde suma viernes, sábado y domingo.
+El dinero libre se reparte **a partes iguales** entre los días hasta el cobro (v0.7.0). Lo de hoy es «Hoy puedes gastar», y «¿De dónde sale?» enseña la resta completa. La tarjeta del finde suma viernes, sábado y domingo.
+
+Lo que decides apartar al cobrar (`S.aparta[inicioCiclo] = {ahorro, hecho, fecha}`) se descuenta del saldo hasta que Brisa ve el traspaso. El resultado del ciclo (`resultadoPrevisto`) es lo que entra menos lo gastado (el ahorro y las cuentas propias no cuentan), menos los pagos pendientes y el dinero libre: lo que quedaría si sigues el número.
 
 **Corazones** = libre ÷ día a día × 10, redondeado.
 
@@ -199,6 +201,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.7.0 | 3 nov 2026 | Frenar el agujero: Inicio con «Este ciclo vas para +X €» y barras por mes; reparto de la nómina con el ahorro primero; el número es igual cada día y «¿De dónde sale?» enseña el cálculo |
 | 0.6.8 | 3 nov 2026 | Apartar al ahorro: «Te sobraron» pasa a «Puedes apartar X», que tiene en cuenta extras, pagos pendientes y lo que necesitas hasta el cobro. Consejos nuevos: lo que sobra de la semana y, los últimos 3 días, lo que sobra del mes. Arreglo: los traspasos a o desde tu ahorro que llegan de BBVA conectado ya no cuentan como gasto |
 | 0.6.7 | 3 nov 2026 | «No es de este viaje» en el detalle de un gasto: se saca del viaje y sigue como extra aparte o pasa a gasto normal |
 | 0.6.6 | 3 nov 2026 | Devoluciones a mano: el listado ya no se corta en 25 gastos y admite cargos de fijos que varían (gasolina), que bajan lo que llevas de la reserva |
