@@ -177,6 +177,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 - La clave privada está solo en el secreto `ENABLE_BANKING_KEY` de Supabase.
 - La app sincroniza cada vez que se abre o se vuelve a ella, si han pasado más de 5 minutos desde la última vez.
+- **Fallos pasajeros de BBVA** (`ASPSP_ERROR` o 5xx): cada lectura se intenta hasta 3 veces (esperas de 1 y 2,5 s). Si aun así falla la cuenta principal, la función responde `{ sinRespuesta: true }` con estado 200 y guarda `error: "sin_respuesta"`, sin tocar `ultima_sync`; la app no apunta la sincronización y reintenta al volver. Si falla otra cuenta, se sigue con normalidad. Si falta el saldo de la principal tampoco se devuelven movimientos, porque el saldo reconstruido saldría mal.
 - La vuelta de BBVA solo se reconoce si trae `state` y la conexión se empezó desde Brisa (marca `brisa:banco-pendiente`). El enlace del correo también vuelve con `?code=`, y no hay que tocarlo.
 - Si el banco no da el saldo tras cada movimiento (BBVA no lo da), se reconstruye hacia atrás desde el saldo actual. Comprobado: cuadra con el saldo del Excel en todos los movimientos.
 - **Solo la cuenta principal** (la que más movimientos tiene, fijada en la primera sincronización) llega a Brisa. Las demás cuentas vinculadas, como la de ahorro, se guardan en `banco_movs` pero no se mezclan con los gastos.
@@ -203,6 +204,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.8.5 | 4 nov 2026 | Cuando BBVA falla un momento, Brisa reintenta sola antes de rendirse. Si la cuenta de ahorro no responde, la principal se actualiza igual. Si no responde la principal, lo dice («BBVA no responde ahora mismo») y lo intenta de nuevo al volver a abrir la app |
 | 0.8.4 | 3 nov 2026 | «Hoy puedes gastar» baja con lo que gastas hoy, en vez de repartir el gasto entre todos los días hasta el cobro |
 | 0.8.3 | 3 nov 2026 | Los movimientos de BBVA se actualizan cada vez que abres la app (si han pasado más de 5 minutos), en vez de cada 2 horas |
 | 0.8.2 | 3 nov 2026 | Movimientos: el icono de la categoría sustituye a la inicial del comercio |

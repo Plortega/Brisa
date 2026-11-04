@@ -55,6 +55,20 @@ async function eb(metodo: string, ruta: string, cuerpo?: unknown, psu?: Record<s
   return d;
 }
 
+// BBVA a veces falla un momento ("Internal server error") y a los segundos responde bien:
+// las lecturas se reintentan antes de darlo por perdido.
+const esPasajero = (e: any) => e?.status >= 500 || e?.datos?.error === "ASPSP_ERROR";
+async function ebLeer(ruta: string, psu: Record<string, string>) {
+  const pausas = [1000, 2500];
+  for (let i = 0; ; i++) {
+    try { return await eb("GET", ruta, undefined, psu); }
+    catch (e: any) {
+      if (i >= pausas.length || !esPasajero(e)) throw e;
+      await new Promise((r) => setTimeout(r, pausas[i]));
+    }
+  }
+}
+
 // ---------- Utilidades ----------
 const isoDia = (d: Date) => d.toISOString().slice(0, 10);
 const masDias = (s: string, n: number) => { const d = new Date(s + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return isoDia(d); };
@@ -165,23 +179,30 @@ async function sincronizar(db: any, uid: string, con: any, body: any, psu: Recor
       do {
         const q = new URLSearchParams({ date_from: desde, date_to: hoy });
         if (ck) q.set("continuation_key", ck);
-        const r = await eb("GET", `/accounts/${c.uid}/transactions?${q}`, undefined, psu);
+        const r = await ebLeer(`/accounts/${c.uid}/transactions?${q}`, psu);
         lista.push(...(r.transactions || []));
         ck = r.continuation_key || null;
       } while (ck);
     } catch (e: any) {
       if (e.status === 401 || e.status === 403 || /expired|EXPIRED|revoked/i.test(String(e.message))) { caducada = true; break; }
-      throw e;
+      if (!esPasajero(e)) throw e;
+      // Lo guardado sigue bien: esta cuenta se queda como estaba y se prueba la siguiente
+      console.error(`BBVA no responde (cuenta *${c.fin}):`, e.message);
+      c._sinRespuesta = true;
+      continue;
     }
     // Saldo actual para reconstruir el saldo tras cada movimiento si el banco no lo da
     let saldo: number | null = null;
     try {
-      const b = await eb("GET", `/accounts/${c.uid}/balances`, undefined, psu);
+      const b = await ebLeer(`/accounts/${c.uid}/balances`, psu);
       const pref = ["CLBD", "ITBD", "XPCD", "ITAV", "CLAV"];
       const bs = (b.balances || []).sort((x: any, y: any) => pref.indexOf(x.balance_type) - pref.indexOf(y.balance_type));
       if (bs[0]) saldo = Number(bs[0].balance_amount?.amount);
       c.saldo = saldo; c.saldo_fecha = new Date().toISOString();
-    } catch (_) { /* sin saldo */ }
+    } catch (e: any) {
+      // Sin el saldo de hoy, el saldo tras cada movimiento saldría mal: mejor esperar a la próxima
+      if (esPasajero(e)) { console.error(`BBVA no da el saldo (cuenta *${c.fin}):`, e.message); c._sinRespuesta = true; }
+    }
     const book = lista.filter((t) => (t.status || "BOOK") === "BOOK");
     c._ret = lista.filter((t) => t.status === "PDNG" && t.credit_debit_indicator === "DBIT").reduce((a, t) => a + Number(t.transaction_amount?.amount || 0), 0);
     for (const [i, t] of book.entries()) {
@@ -198,6 +219,10 @@ async function sincronizar(db: any, uid: string, con: any, body: any, psu: Recor
       if (error) throw error;
     }
   }
+  // Sin principal aún (primera vez) no se puede elegir si alguna cuenta no ha respondido
+  if (!cuentas.some((c: any) => c.principal) && cuentas.some((c: any) => c._sinRespuesta)) throw new Error("BBVA no responde");
+  // Solo importa si falla la principal: la de ahorro no llega a los gastos
+  const sinRespuesta = !caducada && cuentas.some((c: any) => c.principal && c._sinRespuesta);
   // La cuenta principal (la del día a día) es la que más movimientos tiene; se fija una vez.
   // Las demás (p. ej. la de ahorro) no se mezclan con los gastos: solo se devuelve su saldo.
   if (!cuentas.some((c: any) => c.principal) && cuentas.length) {
@@ -210,10 +235,12 @@ async function sincronizar(db: any, uid: string, con: any, body: any, psu: Recor
   }
   // Lo retenido con tarjeta, solo de la cuenta principal
   retenido = cuentas.filter((c: any) => c.principal).reduce((a: number, c: any) => a + (c._ret || 0), 0);
-  for (const c of cuentas) delete c._ret;
-  await db.from("banco_conexion").update({ cuentas, ultima_sync: new Date().toISOString(), error: caducada ? "caducada" : null,
-    actualizado: new Date().toISOString() }).eq("user_id", uid);
+  for (const c of cuentas) { delete c._ret; delete c._sinRespuesta; }
+  const ahora = new Date().toISOString();
+  await db.from("banco_conexion").update({ cuentas, ...(sinRespuesta ? {} : { ultima_sync: ahora }),
+    error: caducada ? "caducada" : sinRespuesta ? "sin_respuesta" : null, actualizado: ahora }).eq("user_id", uid);
   if (caducada) return { caducada: true, movimientos: [] };
+  if (sinRespuesta) return { sinRespuesta: true, movimientos: [] };
 
   // Devolvemos los movimientos de los últimos días, con el saldo tras cada uno
   const desdeApp = body.desde || masDias(hoy, -120);

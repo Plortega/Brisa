@@ -1,9 +1,9 @@
-/* Brisa · v0.8.4 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.8.5 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.8.4';
+  const VERSION_APP = '0.8.5';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -202,6 +202,11 @@
       if (r.caducada) {
         S.banco.caducada = true; banco.resultado = { error: true, txt: 'El permiso con BBVA ha caducado' };
         banco.ocupado = false; guardar(); render(); if (aviso) toast('El permiso con BBVA ha caducado: renuévalo', 4000); return;
+      }
+      if (r.sinRespuesta) {
+        // El fallo es de BBVA y lo ya traído sigue bien. Sin apuntar «ultima», se reintenta al volver a abrir
+        S.banco.caducada = false; S.banco.error = 'sin_respuesta'; banco.resultado = { error: true, txt: 'BBVA no responde ahora mismo' };
+        banco.ocupado = false; guardar(); render(); if (aviso) toast('BBVA no responde ahora mismo. Lo intento otra vez cuando vuelvas a abrir Brisa', 4000); return;
       }
       const n = incorporarBanco(r);
       S.banco.ultima = Date.now(); S.banco.caducada = false; S.banco.error = null;
