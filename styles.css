@@ -270,3 +270,45 @@ div.aj-row{cursor:default}
 .tile-w{background:var(--card);border:1px solid var(--line)}
 .tile .num{font-size:28px}
 :root[data-theme="dark"] .hero-cnt{background:#2B1623;color:var(--berry-d)}
+/* v0.9.3 · Presupuesto: sobres en rejilla */
+.sb-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.sb{display:flex;flex-direction:column;gap:6px;text-align:left;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:24px;padding:14px;cursor:pointer;min-width:0}
+.sb[disabled]{cursor:default;opacity:1}
+.sb.vacio{background:var(--peach);border-color:transparent}
+.sb-n{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;line-height:1.25}
+.sb-n .dot{width:12px;height:12px;border-radius:6px}
+/* v0.9.3 · Interruptor */
+.sw{width:52px;height:30px;border-radius:15px;border:0;padding:3px;background:var(--line2);display:flex;align-items:center;justify-content:flex-start;cursor:pointer;flex-shrink:0}
+.sw i{width:24px;height:24px;border-radius:12px;background:#fff;display:block}
+.sw[aria-checked=true]{background:var(--berry);justify-content:flex-end}
+.mov .av{font-family:var(--serif)}
+/* v0.9.3 · Ajustes en listas agrupadas, con su icono en pastel */
+.aj-lbl{font-family:var(--sans);font-style:normal;font-size:13px;font-weight:700;color:var(--muted);margin:16px 6px 8px}
+.aj-grp{background:none;border:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.aj-grp .aj-row{background:var(--card);border:0;border-radius:6px;padding:8px 14px;min-height:60px;gap:12px}
+.aj-grp .aj-row:first-child{border-top-left-radius:22px;border-top-right-radius:22px}
+.aj-grp .aj-row:last-child{border-bottom-left-radius:22px;border-bottom-right-radius:22px}
+.aj-grp.aj-solo{background:var(--card);border-radius:22px;display:block}
+.aj-ic{width:40px;height:40px;border-radius:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ink)}
+:root[data-theme="dark"] .aj-ic{color:var(--ink)}
+/* v0.9.3 · Modo finde: fichas de días */
+.dias-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.dia-t{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.dia-t.hoy{border:1.5px dashed var(--rose3)}
+/* Candado: el PIN se rellena con corazones pixel */
+.lk-dots{gap:14px}.lk-dots svg{stroke:none;fill:none}
+/* Consejos: lo que sobra, en mantequilla; los avisos, sin pespunte */
+.rec{border-style:solid;border-color:var(--line)}
+.rec.av{border:0}
+.rec.gm{background:var(--butter);border:0}
+.rec.gm .lab{color:var(--butter-d)}
+.rec.gm .rec-h .ic{background:var(--card);color:var(--butter-d)}
+.rec.gm .rec-h .small{color:var(--butter-d)}
+.rec.gm .rec-b .btn:not(.ghost){background:var(--butter-d)}
+:root[data-theme="dark"] .rec.gm .rec-b .btn:not(.ghost){color:#2B1623}
+/* Listas dentro de tarjetas: filas agrupadas al estilo Bra-Píxel */
+.card:has(> .mov):not(:has(> :not(.mov))){background:none;border:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.card:has(> .mov):not(:has(> :not(.mov))) > .mov{background:var(--card);border:0;border-radius:6px;padding:10px 14px;min-height:60px}
+.card:has(> .mov):not(:has(> :not(.mov))) > .mov:first-child{border-top-left-radius:22px;border-top-right-radius:22px}
+.card:has(> .mov):not(:has(> :not(.mov))) > .mov:last-child{border-bottom-left-radius:22px;border-bottom-right-radius:22px}
+.sheet::before{content:'';display:block;width:40px;height:5px;border-radius:3px;background:var(--line2);margin:-6px auto 14px}

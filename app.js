@@ -1,9 +1,9 @@
-/* Brisa · v0.9.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.9.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.9.2';
+  const VERSION_APP = '0.9.3';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -1409,28 +1409,29 @@
     }
     return !!x.cat && x.cat === k.categoria;
   }
+  // v0.9.3 · Bra-Píxel: los sobres en rejilla de 2, cada uno con su pastel
+  const colorSobre = (x) => COLORES[x.cat || 'Transporte'] || 'var(--rose)';
   function seccionSobres(c) {
     const So = S.sobres; const lista = So ? So.lista.map((x) => ({ ...SOBRES.find((k) => k.id === x.id), importe: Number(x.importe) })) : SOBRES;
     const suma = lista.reduce((a, x) => a + x.importe, 0);
-    const icono = (x, vacio) => `<span style="width:36px;height:36px;border-radius:18px;background:${vacio ? 'var(--peach)' : 'var(--rose)'};color:${vacio ? 'var(--peach-d)' : 'var(--berry)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${IC[x.ic].replace('<svg', '<svg width="20" height="20"')}</span>`;
+    const cab = (x) => `<span class="sb-n"><span class="dot" style="background:${colorSobre(x)};border:1px solid var(--line2)"></span>${x.nombre}</span>`;
     if (!c.sobres.length) {
       const empieza = So ? So.desde : (dias(c.inicio, hoyIso()) <= 3 ? c.inicio : c.fin);
-      return `<div class="h2" style="margin-top:0">Tus sobres</div>
-      <section class="card" style="border:1.5px dashed var(--rose3);padding:6px 18px">
-        ${lista.map((x) => `<button type="button" class="row" ${So ? `data-sobre="${x.id}"` : ''} style="width:100%;min-height:52px;background:none;border:0;border-bottom:1px solid var(--line);font:inherit;color:inherit;text-align:left;${So ? 'cursor:pointer' : ''}"><span style="display:flex;align-items:center;gap:10px">${icono(x)}<b style="font-size:15px">${x.nombre}</b></span><span class="num">${eur(x.importe)}</span></button>`).join('')}
-        <p class="small" style="margin:10px 0;line-height:1.45;color:var(--t-hero)">${So ? `Empiezan con tu nómina del ${fmtF(So.desde)}. Toca uno para cambiar su importe.` : `Cuatro sobres de tu día a día: cuando se vacía uno, lo notas antes de pagar. El resto, ${eur(Math.max(0, c.presupuesto - suma))} al mes, sigue en tu número de cada día.`}</p>
-      </section>
-      ${So ? '' : `<button type="button" class="btn" id="sbEmpezar">${empieza === c.inicio ? 'Empezar ahora' : `Empezar con la nómina del ${fmtF(empieza)}`}</button>`}`;
+      return `<div class="sb-g">${lista.map((x) => `<button type="button" class="sb" ${So ? `data-sobre="${x.id}"` : 'disabled'}>${cab(x)}<span class="num" style="font-size:24px">${eur(x.importe)}</span><span class="xs muted">al mes</span></button>`).join('')}</div>
+      <p class="small" style="margin:2px 6px 12px;line-height:1.45;color:var(--muted)">${So ? `Empiezan con tu nómina del ${fmtF(So.desde)}. Toca uno para cambiar su importe.` : `Cuatro sobres de tu día a día: cuando se vacía uno, lo notas antes de pagar. El resto, ${eur(Math.max(0, c.presupuesto - suma))} al mes, sigue en tu número de cada día.`}</p>
+      ${So ? '' : `<button type="button" class="btn" id="sbEmpezar" style="margin-bottom:14px">${empieza === c.inicio ? 'Empezar ahora' : `Empezar con la nómina del ${fmtF(empieza)}`}</button>`}`;
     }
     const dias0 = Math.max(1, dias(c.inicio, c.fin));
-    return `<div class="h2" style="margin-top:0">Tus sobres hasta el ${aDate(c.fin).getDate()}</div>
-    ${c.sobres.map((x) => { const q = Math.round(x.tope - x.usado); const vacio = q <= 0;
-      return `<button type="button" data-sobre="${x.id}" style="display:flex;flex-direction:column;gap:8px;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;margin-bottom:10px;background:${vacio ? 'var(--peach)' : 'var(--card)'};border:1.5px dashed ${vacio ? 'var(--peach-d)' : 'var(--rose3)'};border-radius:24px;padding:14px 18px">
-        <span class="row" style="gap:10px"><span style="display:flex;align-items:center;gap:10px">${icono(x, vacio)}<b style="font-size:15px">${x.nombre}</b></span><span class="num" style="white-space:nowrap;font-size:17px;color:${vacio ? 'var(--peach-d)' : 'var(--berry)'}">${vacio ? 'Vacío' : 'Te quedan ' + eur(q)}</span></span>
-        <span class="bar l" style="display:block;height:8px" role="img" aria-label="Te quedan ${eur(Math.max(0, q))} de ${eur(x.tope)}"><i style="display:block;height:100%;width:${x.tope > 0 ? Math.round(Math.max(0, q) / x.tope * 100) : 0}%;background:${vacio ? 'var(--peach-d)' : 'var(--berry)'}"></i></span>
-        <span class="small muted">${vacio ? (x.usado > x.tope + 0.5 ? `Te has pasado ${eur(x.usado - x.tope)}: sale de tu día a día` : 'Lo que gastes aquí saldrá de tu día a día') : `De ${eur(x.tope)} · llevas ${eur(x.usado)}`}</span>
-      </button>`; }).join('')}
-    <section class="card" style="background:var(--rose);border:0;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px"><span><b style="font-size:15px">Todo lo demás</b><br><span class="small" style="color:var(--t-hero)">Súper, estanco… ${eur(c.presuBase)} al mes</span></span><span class="num" style="font-size:20px;white-space:nowrap">${eur(c.presuBase / dias0)}/día</span></section>`;
+    return `<div class="sb-g">${c.sobres.map((x) => { const q = Math.round(x.tope - x.usado); const vacio = q <= 0;
+      return `<button type="button" class="sb${vacio ? ' vacio' : ''}" data-sobre="${x.id}">${cab(x)}
+        <span style="display:flex;align-items:baseline;gap:4px"><span class="num" style="font-size:24px">${vacio ? 'Vacío' : eur(q)}</span>${vacio ? '' : '<span class="xs muted">quedan</span>'}</span>
+        <span class="bar l" style="display:block;height:8px" role="img" aria-label="Llevas ${eur(x.usado)} de ${eur(x.tope)}"><i style="display:block;height:100%;width:${x.tope > 0 ? Math.min(100, Math.round(x.usado / x.tope * 100)) : 100}%;background:${vacio ? 'var(--peach-d)' : 'var(--berry)'}"></i></span>
+        <span class="xs muted">${vacio && x.usado > x.tope + 0.5 ? `Te has pasado ${eur(x.usado - x.tope)}` : `Llevas ${eur(x.usado)} de ${eur(x.tope)}`}</span></button>`; }).join('')}</div>
+    <section class="card" style="background:var(--rose);border:0;display:flex;flex-direction:column;gap:8px">
+      <span class="row"><b style="font-size:15px">Todo lo demás</b><span class="num" style="font-size:20px;white-space:nowrap">${eur(c.presuBase / dias0)}/día</span></span>
+      <span class="small" style="color:var(--t-hero);line-height:1.45">Súper, estanco y lo que no tiene sobre: ${eur(c.presuBase)} al mes. Si un sobre se pasa, el exceso sale de aquí.</span>
+    </section>
+    <div class="card" style="background:var(--butter);border:0;display:flex;gap:12px;align-items:center"><span style="color:var(--rose2);display:inline-flex">${SPARK.replace('class="spark"', 'class="spark" style="margin:0;width:22px;height:22px"')}</span><span class="small" style="line-height:1.45;color:var(--butter-d)">Lo que está «Por revisar» lo meto yo en su sobre según el comercio. Toca un sobre para cambiarlo o pasar 10 € de otro.</span></div>`;
   }
   function abrirSobre(id) {
     const c = ciclo(); const So = S.sobres; const item = So.lista.find((x) => x.id === id); const b = SOBRES.find((k) => k.id === id);
@@ -1724,7 +1725,7 @@
     if (!S.movs.length) return R.inicio();
     const L = consejos();
     const silenciados = Object.keys(S.consejos.no).length + Object.keys(S.consejos.tipoNo).length;
-    const tarjeta = (k) => `<section class="rec ${k.aviso ? 'av' : ''}">
+    const tarjeta = (k) => `<section class="rec ${k.aviso ? 'av' : k.tipo === 'apartar' ? 'gm' : ''}">
       <div class="rec-h"><span class="ic">${k.icon}</span><div class="t"><div class="pix lab">${etiquetaBP(k)}</div><b>${k.titulo}</b><p class="small">${k.sub}</p></div></div>
       <div class="rec-b">${k.acciones.map(([a, t, p]) => a.charAt(0) === '#' ? `<a class="btn small ${p ? '' : 'ghost'}" href="${a}">${t}</a>` : `<button type="button" class="btn small ${p ? '' : 'ghost'}" data-rk="${esc(k.clave)}" data-ra="${a}">${t}</button>`).join('')}</div>
       ${k.nunca ? `<button type="button" class="rec-no" data-rk="${esc(k.clave)}" data-ra="nunca">No me lo vuelvas a decir</button>` : ''}
@@ -1766,7 +1767,7 @@
     const c = ciclo();
     const chip = (attr, val, label, on) => `<button type="button" class="chip-b" ${attr}="${val}" aria-pressed="${on}">${label}</button>`;
     return `
-    <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver a Inicio">${IC.back}</a><div style="flex-grow:1"><h1>¿Me lo compro?${SPARK}</h1><div class="small muted">Pregúntale a Brisa antes de pagar</div></div></div>
+    <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver a Inicio">${IC.back}</a><div style="flex-grow:1"><h1>¿Me lo compro?${SPARK}</h1><div class="small muted">Piénsalo conmigo 10 segundos</div></div></div>
     <section class="card dash" style="display:flex;flex-direction:column;gap:12px">
       <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:10px">
         <label class="field" style="margin:0">¿Qué es?<input id="cqItem" value="${esc(CQ.item)}" placeholder="Unas zapatillas" autocomplete="off"></label>
@@ -1901,18 +1902,18 @@
     const diaTxt = (f) => (f === hoy ? 'Hoy, ' + DIAS[aDate(f).getDay()].toLowerCase() : DIAS[aDate(f).getDay()]) + ' ' + aDate(f).getDate();
     return `
     <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><div style="flex-grow:1"><h1>Modo finde${SPARK}</h1><div class="small muted">De viernes a domingo, un solo número</div></div></div>
-    <section class="hero">
-      ${PIX.spark.replace(/style="[^"]*"/, 'style="top:22px;right:26px"')}
-      <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">${enFinde ? 'TE QUEDAN ESTE FINDE' : 'ESTE FINDE TE PUEDES PERMITIR'}</div>
+    <section class="hero" style="background:var(--peach)">
+      ${PIX.big.replace(/style="[^"]*"/, 'style="top:18px;right:20px"')}${PIX.spark.replace(/style="[^"]*"/, 'style="top:66px;right:30px"')}
+      <div class="pix" style="font-size:14px;color:var(--peach-d);letter-spacing:.5px">${enFinde ? 'TE QUEDAN ESTE FINDE' : 'ESTE FINDE TE PUEDES PERMITIR'}</div>
       <div class="big" style="margin:8px 0 10px">${eur(c.findeTotal)}${enFinde && gastado ? `<span class="small muted" style="font-family:var(--sans);letter-spacing:0;margin-left:8px">de ${eur(total)}</span>` : ''}</div>
       <div class="hearts" role="img" aria-label="${n} de 10 corazones del finde">${corazones(enFinde ? n : 10, 21, 18)}</div>
-      <div class="card" style="margin:14px 0 0;background:rgba(255,255,255,.75);border:0;padding:6px 16px">
-        ${c.finde.length ? c.finde.map((r) => `<div class="row" style="min-height:40px;border-bottom:1px dashed var(--dash)"><span>${diaTxt(r.fecha)}</span><span class="num">${eur(r.importe)}</span></div>`).join('') : '<div class="small" style="padding:8px 0">Tu cobro llega antes del finde: el número cambiará con tu nómina.</div>'}
-      </div>
+      <div class="small" style="color:var(--t-peach);margin-top:8px;font-weight:600;position:relative">Para brillar sin que el lunes duela.</div>
     </section>
+    ${c.finde.length ? `<div class="dia">Tus próximos días</div><div class="dias-g">${c.finde.map((r) => `<div class="dia-t${r.fecha === hoy ? ' hoy' : ''}"><span class="xs" style="font-weight:800;color:var(--muted)">${r.fecha === hoy ? 'Hoy' : DIAS_C[aDate(r.fecha).getDay()]} ${aDate(r.fecha).getDate()}</span><span class="num" style="font-size:19px">${eur(r.importe)}</span></div>`).join('')}</div>` : '<div class="card small">Tu cobro llega antes del finde: el número cambiará con tu nómina.</div>'}
     <button type="button" class="link-card" id="bProximos" style="background:var(--card);border:1px solid var(--line)"><span class="t"><span class="small" style="line-height:1.45">El mismo número cada día. Además, ${habitoFinde(c.H)} <b style="color:var(--berry)">Ver tus próximos días</b></span></span>${IC.chev}</button>
-    ${enFinde ? `<div class="h2">Gastado este finde</div>
-    <div class="card" style="padding:4px 16px">${gastos.length ? gastos.map((m) => `<div class="row" style="min-height:44px;border-bottom:1px solid var(--line)"><span>${esc(nombreMov(m))} <span class="xs muted">· ${DIAS_C[aDate(m.fechaValor || m.fecha).getDay()].toLowerCase()}</span></span><span class="num">${eur(-m.importe, true)}</span></div>`).join('') : '<div class="empty" style="padding:16px">Aún nada en tu Excel</div>'}</div>` : ''}
+    ${enFinde ? `<div class="dia">Gastado este finde</div>
+    ${gastos.length ? `<div class="grp">${gastos.map((m) => `<div class="mov" style="cursor:default"><span class="av" style="background:${COLORES[cat(m).categoria] || 'var(--card)'}">${iconoCat(cat(m).categoria)}</span><span class="t"><span class="n">${esc(nombreMov(m))}</span><span class="xs muted">${esc(cat(m).categoria)} · ${DIAS[aDate(m.fechaValor || m.fecha).getDay()].toLowerCase()}</span></span><span class="amt">${eur(-m.importe, true)}</span></div>`).join('')}</div>` : '<div class="empty" style="padding:16px">Aún nada este finde. Así se hace.</div>'}` : ''}
+    <div class="card" style="background:var(--butter);border:0;display:flex;gap:12px;align-items:center;margin-top:12px"><span style="display:inline-flex">${SPARK.replace('class="spark"', 'class="spark" style="margin:0;width:22px;height:22px"')}</span><span style="display:flex;flex-direction:column;gap:2px"><span class="pix" style="font-size:12px;letter-spacing:.6px;color:var(--butter-d);display:flex;align-items:center">GIRL MATH<span class="emo" aria-hidden="true">💅</span></span><span class="small" style="line-height:1.45;color:var(--butter-d)">Plan en casa = finde a mitad de precio. Y el sofá no cobra.</span></span></div>
     <p class="xs muted" style="line-height:1.45">Lo que no gastes un día pasa a los siguientes. Las compras del finde salen en tu Excel el lunes: Brisa usa la fecha real de la compra.</p>`;
   };
   function habitoFinde(H) {
@@ -2065,7 +2066,8 @@
     const maxP = Math.max(...H.pesos);
     const eta = metaEta(P.paraTi);
     return `
-    <div class="top"><div><h1>Tu presupuesto${SPARK}</h1><div class="small muted">Con tus datos reales. Tú no haces cuentas.</div></div></div>
+    <div class="top"><div><h1>Presupuesto${SPARK}</h1><div class="small muted">Cada euro con su sobre. Organizada y divina.</div></div></div>
+    <div class="seg" role="group" aria-label="Ritmo de ahorro">${ritmoBotones(P.ritmo, 'data-ritmo2')}</div>
     ${seccionSobres(c)}
     <section class="card dash" style="display:flex;flex-direction:column;gap:10px;border-radius:28px;padding:18px 20px">
       <span class="num" style="font-size:17px">Lo que puedes ahorrar</span>
@@ -2075,8 +2077,7 @@
       <div style="border-top:1.5px dashed var(--rose3)"></div>
       <div class="ln"><b>${P.sobra >= 0 ? 'Te sobran al mes' : 'Te faltan al mes'}</b><span class="num" style="color:${P.sobra >= 0 ? 'var(--mint-d)' : 'var(--berry)'}">${eur(Math.abs(P.sobra))}</span></div>
     </section>
-    <div class="h2">¿A qué ritmo ahorras?</div>
-    <div class="seg" role="group" aria-label="Ritmo de ahorro">${ritmoBotones(P.ritmo, 'data-ritmo2')}</div>
+    <div class="h2">Tu ritmo, en tu mes</div>
     <section class="card" style="display:flex;flex-direction:column;gap:12px;border-radius:28px;padding:18px 20px">
       <div style="display:flex;gap:4px;height:14px"><i style="width:${w(P.fijos)};background:#E8A6BB;border-radius:7px"></i><i style="width:${w(P.diaADia)};background:#93C0E6;border-radius:7px"></i><i style="width:${w(P.paraTi)};background:var(--mint-b);border-radius:7px"></i></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" class="xs muted">
@@ -2144,42 +2145,54 @@
     const A = ahorro();
     const activa = A.metas.find((x) => x.ahorrado < x.objetivo);
     const usado = c.rescates - c.forzados;
-    const pr = Math.min(100, Math.round(usado / Math.max(1, S.limiteRescates) * 100));
     const linea = (txt, v, signo) => v ? `<div class="row small"><span>${txt}</span><span class="num" style="color:${signo === '+' ? 'var(--mint-d)' : 'var(--berry)'}">${signo}${eur(v)}</span></div>` : '';
-    const eta = metaEta(aporte).replace(/^«.*?» /, '');
+    const eta = metaEta(aporte).replace(/^«.*?» /, '').replace(/\.$/, '');
+    const apartarOn = !S.consejos.tipoNo.apartar;
+    // v0.9.3 · Bra-Píxel: la meta que se llena, grande y con su flor; las demás, en cola
+    let heroe = '';
+    if (activa) {
+      const pc = Math.min(100, Math.round(activa.ahorrado / activa.objetivo * 100));
+      heroe = `<section class="hero" style="background:var(--mint);display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center">
+        ${orn(28, '#fff', 'top:18px;right:20px')}${orn(13, '#E27FA8', 'top:50px;right:46px')}
+        <span class="pix" style="font-size:14px;letter-spacing:.6px;color:var(--t-mint2);position:relative">${esc(activa.nombre).toUpperCase()}</span>
+        <div style="position:relative;width:184px;height:184px">
+          <svg width="184" height="184" viewBox="0 0 104 104" role="img" aria-label="${pc} % completado"><path d="${FLOR}" style="fill:var(--card);stroke:none"/><circle cx="52" cy="52" r="36" style="stroke:var(--bar-l)" stroke-width="6"/>${pc > 0 ? `<circle cx="52" cy="52" r="36" style="stroke:var(--mint-d)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(pc / 100 * 226.2).toFixed(1)} 227" transform="rotate(-90 52 52)"/>` : ''}</svg>
+          <span style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span class="num" style="font-size:34px;line-height:1">${eur(activa.ahorrado)}</span><span class="xs" style="font-weight:800;color:var(--mint-d)">de ${eur(activa.objetivo)}</span></span>
+        </div>
+        <div class="hearts" style="gap:3px;justify-content:center" role="img" aria-label="${Math.round(pc / 10)} de 10 corazones">${corazones(pc / 10, 21, 18)}</div>
+        <span style="background:var(--card);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:800;position:relative">${aporte > 0 ? `${eur(aporte)}/mes${eta ? ' · ' + eta + ' si no te lías' : ''}` : 'Sube tu ritmo para que empiece a llenarse'}</span>
+      </section>`;
+    }
+    const cola = A.metas.filter((m) => m !== activa);
+    const pos = (m) => A.metas.indexOf(m) + 1;
     return `
     <div class="top"><div><h1>Tus metas${SPARK}</h1><div class="small muted">Una detrás de otra. Sin dramas, sin prisas.</div></div></div>
+    <div class="small" style="font-weight:700;color:var(--muted);margin:0 6px 8px">¿Cómo de en serio vamos?</div>
+    <div class="seg" role="group" aria-label="Ritmo de ahorro">${ritmoBotones(c.P.ritmo, 'data-ritmo2')}</div>
+    ${heroe}
+    ${cola.length ? `<div class="dia">${cola.some((m) => m.ahorrado < m.objetivo) ? 'En cola' : 'Conseguidas'}</div><div class="grp">${cola.map((m) => {
+      const hecha = m.ahorrado >= m.objetivo;
+      return `<div class="mov" style="cursor:default"><span class="av" style="background:${hecha ? 'var(--mint)' : 'var(--rose)'};font-style:italic;font-size:18px">${hecha ? '✓' : pos(m)}</span>
+        <span class="t"><span class="n">${esc(m.nombre)}</span><span class="xs muted">${hecha ? '¡Conseguida, reina!' : `${eur(m.ahorrado)} de ${eur(m.objetivo)} · empieza al terminar la anterior`}</span></span></div>`;
+    }).join('')}</div>` : ''}
+    <section class="card" style="display:flex;align-items:center;gap:14px">
+      <span style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">Lo que sobre, para tu yo del futuro</b><span class="small muted" style="line-height:1.4">Girl math: lo que no gastas cuenta como ganado. Te aviso cuando puedas apartar.</span></span>
+      <button type="button" class="sw" id="bApartarSw" role="switch" aria-checked="${apartarOn}" aria-label="Avisarme cuando pueda apartar"><i></i></button>
+    </section>
     <section class="card" style="display:flex;flex-direction:column;gap:6px">
       <div class="row"><span class="small muted">Tu ahorro</span><span class="num" style="font-size:28px">${eur(A.saldo)}</span></div>
       ${S.ahorro.base ? `<div class="row small muted"><span>Saldo de partida</span><span class="num">${eur(S.ahorro.base)}</span></div>` : ''}
       ${linea('Apartado de la nómina', A.nomina, '+')}${linea('Redondeos de tus compras', A.redondeo, '+')}${linea('Otros traspasos al ahorro', A.otros, '+')}${linea('Rescatado', A.rescatado, '−')}
-      <p class="xs muted" style="margin:4px 0 6px;line-height:1.45">Se calcula solo con tu Excel: suma lo que tu banco aparta y resta lo que vuelve a tu cuenta.</p>
+      <p class="xs muted" style="margin:4px 0 6px;line-height:1.45">Se calcula solo con tus movimientos: suma lo que tu banco aparta y resta lo que vuelve a tu cuenta.</p>
       <button class="btn small ghost" id="bAjustarAhorro" style="align-self:flex-start">Ajustar al saldo real</button>
     </section>
-    ${A.metas.map((m) => {
-      const pc = Math.min(100, Math.round(m.ahorrado / m.objetivo * 100));
-      const es = m === activa;
-      return `<section class="hero" style="background:${es ? 'var(--mint)' : 'var(--card)'};display:flex;gap:16px;align-items:center;padding:20px;${es ? '' : 'outline:0;border:1px solid var(--line)'}">
-        ${es ? orn(14, '#fff', 'bottom:16px;right:22px') : ''}
-        <div style="position:relative;width:104px;height:104px;flex-shrink:0">
-          <svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="${pc} % completado">${es ? `<path d="${FLOR}" style="fill:var(--card);stroke:none"/>` : ''}<circle cx="52" cy="52" r="36" style="stroke:${es ? 'var(--bar-l)' : 'var(--wash)'}" stroke-width="9"/>${pc > 0 ? `<circle cx="52" cy="52" r="36" style="stroke:var(--mint-b)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(pc / 100 * 226.2).toFixed(1)} 227" transform="rotate(-90 52 52)"/>` : ''}</svg>
-          <span class="num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px">${pc}%</span>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:5px;flex-grow:1">
-          ${es && pc < 100 ? '<span class="pix" style="font-size:12px;letter-spacing:.6px;color:var(--mint-d)">LLENÁNDOSE AHORA</span>' : ''}<span class="num" style="font-size:19px">${esc(m.nombre)}</span>
-          <span class="small">${eur(m.ahorrado)} de ${eur(m.objetivo)}</span>
-          <div class="hearts" style="gap:3px" role="img" aria-label="${Math.round(pc / 10)} de 10 corazones">${corazones(pc / 10, 14, 12)}</div>
-          <span class="xs">${pc >= 100 ? '¡Conseguida, reina!' : es ? eur(aporte) + '/mes' + (eta ? ' · ' + eta : '') : 'Empieza al terminar la anterior'}</span>
-        </div>
-      </section>`;
-    }).join('')}
-    <section class="card dash">
-      <div class="row" style="margin-bottom:8px"><span style="display:flex;gap:10px;align-items:center"><span style="width:36px;height:36px;border-radius:18px;background:var(--rose);color:var(--berry);display:flex;align-items:center;justify-content:center">${IC.uturn.replace('viewBox', 'width="18" height="18" viewBox')}</span><b>Rescates del ahorro</b></span><span class="num" style="white-space:nowrap">${eur(usado)} <span class="xs muted">de ${eur(S.limiteRescates)}</span></span></div>
-      ${c.forzados ? `<p class="xs" style="margin:0 0 8px;color:var(--berry)">Además, ${eur(c.forzados)} volvieron para tapar números rojos. No cuentan en tu límite: son la señal de que el banco aparta más de lo que tu mes aguanta.</p>` : ''}
-      <div class="bar l"><i style="width:${pr}%;${usado > S.limiteRescates ? 'background:var(--berry)' : ''}"></i></div>
-      <p class="xs muted" style="margin:8px 0 0;line-height:1.45">${usado > S.limiteRescates ? `Este mes te has pasado ${eur(usado - S.limiteRescates)} del límite. ` : ''}Dinero que ha vuelto de tu ahorro este mes. Sacar no está prohibido: solo queremos que se vea.</p>
+    <section class="card" style="display:flex;flex-direction:column;gap:8px">
+      <div class="row"><b style="font-size:15px">Rescates del ahorro</b><span class="small muted"><span class="num" style="font-size:19px;color:var(--ink)">${eur(usado)}</span> de ${eur(S.limiteRescates)}</span></div>
+      ${onda(S.limiteRescates > 0 ? usado / S.limiteRescates : 0, usado > S.limiteRescates ? 'var(--peach-d)' : 'var(--berry)', 'var(--rose)', `${eur(usado)} rescatados de ${eur(S.limiteRescates)}`)}
+      ${c.forzados ? `<p class="xs" style="margin:0;color:var(--berry)">Además, ${eur(c.forzados)} volvieron para tapar números rojos. No cuentan en tu límite: son la señal de que el banco aparta más de lo que tu mes aguanta.</p>` : ''}
+      <p class="xs muted" style="margin:0;line-height:1.45">${usado > S.limiteRescates ? `Este mes te has pasado ${eur(usado - S.limiteRescates)} del límite. ` : ''}Sacar no está prohibido, reina: solo queremos que se vea.</p>
     </section>
-    ${linkCard({ attrs: 'id="bNuevaMeta"', style: 'background:var(--wash);border:1.5px dashed var(--rose3)', icStyle: 'background:var(--peach);color:var(--peach-d)', icon: IC.plus, titulo: 'Crear otra meta', sub: 'Empieza al completar la anterior' })}`;
+    <button type="button" class="btn ghost" id="bNuevaMeta" style="border:1.5px dashed var(--rose3)">${IC.plus.replace('<svg', '<svg width="18" height="18"')}Siguiente capricho, pero con plan</button>`;
   };
 
   /* ---------- Pagos fijos: calendario y lista ---------- */
@@ -2240,11 +2253,16 @@
     const sug = sugerirFijos();
     const plz = plazosNuevos();
     return `
-    <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Pagos fijos${SPARK}</h1></div>
-    <p class="small muted" style="margin-top:0;line-height:1.5">Lo que tiene que salir antes de tu cobro del ${fmtF(c.fin)}. Brisa lo reserva para que tu número del día sea real y lo marca como pagado sola cuando sale en tu Excel. Toca uno para cambiarlo o darlo de baja.</p>
+    <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><div style="flex-grow:1"><h1>Pagos fijos${SPARK}</h1><div class="small muted">Lo que sale sí o sí. Sin sorpresas.</div></div></div>
+    <section class="hero">
+      ${PIX.big.replace(/style="[^"]*"/, 'style="top:18px;right:20px"')}
+      <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">TOTAL PENDIENTE</div>
+      <div class="big" style="font-size:52px;margin:8px 0 6px">${eur(c.pendiente)}</div>
+      <div class="small" style="color:var(--t-hero2);font-weight:600">antes de cobrar el ${aDate(c.fin).getDate()} · ya está reservado</div>
+    </section>
+    <p class="small muted" style="margin:0 6px 12px;line-height:1.5">Lo que tiene que salir antes de tu cobro del ${fmtF(c.fin)}. Brisa lo reserva para que tu número del día sea real y lo marca como pagado sola cuando sale en tu Excel. Toca uno para cambiarlo o darlo de baja.</p>
     ${faltanFijos() ? `<div class="card" style="background:var(--peach);border:0;color:var(--t-peach)"><b>Aún no tienes tus fijos de cada mes</b><p class="small" style="margin:4px 0 0;line-height:1.45">Pole, suscripciones, seguros… Añádelos abajo o cárgalos desde <a href="#ajustes">Ajustes → Restaurar copia o reglas</a>.</p></div>` : ''}
     ${calendario(c)}
-    <div class="total-pix"><span class="pix">TOTAL PENDIENTE</span><span class="num" style="font-size:22px">${eur(c.pendiente, true)}</span></div>
     ${pend.length ? `<div class="h2">Antes de cobrar</div><div class="card" style="padding:4px 16px">${pend.map((q) => filaCargo(q, 'pendiente', q.pendiente)).join('')}</div>` : ''}
     ${pag.length ? `<div class="h2">Pagados en este ciclo</div><div class="card" style="padding:4px 16px">${pag.map((q) => filaCargo(q, 'pagado')).join('')}</div>` : ''}
     ${plz.length ? `<div class="h2">Pagos a plazos sin apuntar</div>${tarjetaPlazos(plz)}` : ''}
@@ -2258,26 +2276,25 @@
 
   /* ---------- Ajustes ---------- */
   const filaAj = (o) => `<${o.href ? 'a href="' + o.href + '"' : o.btn ? 'button type="button" id="' + o.btn + '"' : 'div'} class="aj-row">
-    <span class="t"><b>${o.t}</b>${o.s ? `<span class="xs muted">${o.s}</span>` : ''}</span>${o.input || ''}${o.v ? `<span class="small muted">${o.v}</span>` : ''}${o.href || o.btn ? IC.chev : ''}</${o.href ? 'a' : o.btn ? 'button' : 'div'}>`;
+    ${o.ic ? `<span class="aj-ic" style="background:${o.bg || 'var(--rose)'}">${o.ic.replace('<svg', '<svg width="20" height="20"')}</span>` : ''}<span class="t"><b>${o.t}</b>${o.s ? `<span class="xs muted">${o.s}</span>` : ''}</span>${o.input || ''}${o.v ? `<span class="small muted">${o.v}</span>` : ''}${o.href || o.btn ? IC.chev : ''}</${o.href ? 'a' : o.btn ? 'button' : 'div'}>`;
   R.ajustes = () => {
     const p = S.perfil; const c = S.movs.length ? ciclo() : null;
     const nReglas = Object.keys(S.reglas.reglasUsuario).length + S.reglas.palabras.length + S.reglas.importes.length;
     const desde = S.movs.length ? S.movs[S.movs.length - 1].fecha.slice(0, 7) : null;
     return `
-    <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><h1 style="flex-grow:1">Ajustes${SPARK}</h1></div>
-    <section class="hero" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:24px;margin-bottom:14px">
-      ${orn(20, '#fff', 'top:12px;right:18px')}
-      <span style="width:48px;height:48px;border-radius:24px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:22px;font-style:italic;color:var(--berry);flex-shrink:0">${esc((p.nombre || '?').charAt(0).toUpperCase())}</span>
-      <span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">${esc(p.nombre)}</b><span class="small" style="color:var(--t-hero2)">${desde ? 'Tus datos desde ' + mesTexto(desde) : 'Aún sin movimientos'}</span></span>
+    <div class="top"><div><h1>Ajustes${SPARK}</h1><div class="small muted">Tu Brisa, a tu manera.</div></div></div>
+    <section class="card" style="background:var(--rose);border:0;display:flex;align-items:center;gap:14px;border-radius:28px">
+      <span class="yo" aria-hidden="true"><svg viewBox="0 0 52 52"><path d="${COOKIE}"/></svg><span>${esc((p.nombre || '?').charAt(0).toUpperCase())}</span></span>
+      <span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:17px">${esc(p.nombre)}</b><span class="small" style="color:var(--t-hero2)">Cobras el ${esc(p.diaCobro)} · ritmo ${RITMOS[p.ritmo].label.toLowerCase()}${desde ? ' · datos desde ' + mesTexto(desde) : ''}</span></span>
     </section>
     <div class="aj-lbl">Tu dinero</div>
     <div class="aj-grp">
-      ${filaAj({ btn: 'bSubirAj', t: 'Subir el Excel de la semana', s: S.movs.length ? 'Datos hasta el ' + fmtF(S.movs[0].fecha) + ' · ' + S.movs.length + ' movimientos' : 'Aún no has subido ninguno' })}
-      ${filaAj({ t: 'Cobras al mes', s: c && c.P.deNomina ? 'Uso tu nómina del Excel: ' + eur(c.P.cobras) : 'Hasta que suba una nómina', input: `<input class="aj-in" data-campo="ingresos" inputmode="decimal" value="${esc(p.ingresos)}" aria-label="Cobras al mes" style="width:76px"><span class="small muted">€</span>` })}
-      ${filaAj({ t: 'Día de cobro', s: 'Ese día empieza tu mes', input: `<input class="aj-in" data-campo="diaCobro" inputmode="numeric" value="${esc(p.diaCobro)}" aria-label="Día de cobro" style="width:56px">` })}
-      ${filaAj({ href: '#presupuesto', t: 'Ritmo de ahorro', s: 'Cámbialo cuando quieras', v: RITMOS[p.ritmo].label })}
-      ${filaAj({ href: '#fijos', t: 'Pagos fijos', s: 'Lo que Brisa reserva cada mes', v: c ? eur(c.P.fijos) : (S.fijos.length + '') })}
-      ${filaAj({ t: 'Límite de rescates', s: 'Lo que te permites sacar del ahorro al mes', input: `<input class="aj-in" data-campo="limite" inputmode="decimal" value="${esc(S.limiteRescates)}" aria-label="Límite de rescates" style="width:76px"><span class="small muted">€</span>` })}
+      ${filaAj({ ic: IC.file, bg: 'var(--sky)', btn: 'bSubirAj', t: 'Subir el Excel de la semana', s: S.movs.length ? 'Datos hasta el ' + fmtF(S.movs[0].fecha) + ' · ' + S.movs.length + ' movimientos' : 'Aún no has subido ninguno' })}
+      ${filaAj({ ic: IC.coin, bg: 'var(--mint)', t: 'Cobras al mes', s: c && c.P.deNomina ? 'Uso tu nómina del Excel: ' + eur(c.P.cobras) : 'Hasta que suba una nómina', input: `<input class="aj-in" data-campo="ingresos" inputmode="decimal" value="${esc(p.ingresos)}" aria-label="Cobras al mes" style="width:76px"><span class="small muted">€</span>` })}
+      ${filaAj({ ic: IC.cal, bg: 'var(--lilac)', t: 'Día de cobro', s: 'Ese día empieza tu mes', input: `<input class="aj-in" data-campo="diaCobro" inputmode="numeric" value="${esc(p.diaCobro)}" aria-label="Día de cobro" style="width:56px">` })}
+      ${filaAj({ ic: IC.trend, bg: 'var(--rose)', href: '#presupuesto', t: 'Ritmo de ahorro', s: 'Cámbialo cuando quieras', v: RITMOS[p.ritmo].label })}
+      ${filaAj({ ic: IC.repeat, bg: 'var(--butter)', href: '#fijos', t: 'Pagos fijos', s: 'Lo que Brisa reserva cada mes', v: c ? eur(c.P.fijos) : (S.fijos.length + '') })}
+      ${filaAj({ ic: IC.uturn, bg: 'var(--peach)', t: 'Límite de rescates', s: 'Lo que te permites sacar del ahorro al mes', input: `<input class="aj-in" data-campo="limite" inputmode="decimal" value="${esc(S.limiteRescates)}" aria-label="Límite de rescates" style="width:76px"><span class="small muted">€</span>` })}
     </div>
     ${NUBE ? `<div class="aj-lbl">Tu cuenta</div>
     <div class="aj-grp">
@@ -2290,20 +2307,20 @@
         : filaAj({ href: '#cuenta', t: 'Guardar en la nube', s: 'Para no perder nada si cambias de móvil. También hace falta para conectar BBVA' })}
     </div>` : ''}
     <div class="aj-lbl">Apariencia</div>
-    <div class="aj-grp" style="padding:12px 14px">
+    <div class="aj-grp aj-solo" style="padding:12px 14px">
       <div class="seg" role="group" aria-label="Apariencia" style="margin:0">${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([k, t]) => `<button type="button" data-tema="${k}" aria-pressed="${temaElegido() === k}">${t}</button>`).join('')}</div>
       <p class="xs muted" style="margin:8px 4px 2px">${temaElegido() === 'auto' ? 'Como tu móvil: si se pone oscuro, Brisa también.' : temaElegido() === 'dark' ? 'Siempre en modo oscuro.' : 'Siempre en modo claro.'}</p>
     </div>
     <div class="aj-lbl">Privacidad</div>
     <div class="aj-grp">
-      ${filaAj({ btn: 'bCandado', t: 'Entrar con huella', s: (leerC() && leerC().on) ? (leerC().cred ? 'Huella o PIN' : 'Con PIN') + ' si llevas más de 5 min sin usarla' : 'Nadie más ve tus cuentas', v: (leerC() && leerC().on) ? 'Activado' : 'No' })}
+      ${filaAj({ ic: IC.card, bg: 'var(--lilac)', btn: 'bCandado', t: 'Entrar con huella', s: (leerC() && leerC().on) ? (leerC().cred ? 'Huella o PIN' : 'Con PIN') + ' si llevas más de 5 min sin usarla' : 'Nadie más ve tus cuentas', v: (leerC() && leerC().on) ? 'Activado' : 'No' })}
     </div>
     <div class="aj-lbl">Tus datos</div>
     <div class="aj-grp">
       ${filaAj({ t: 'Tu nombre', input: `<input class="aj-in" data-campo="nombre" value="${esc(p.nombre)}" aria-label="Tu nombre" style="width:120px;text-align:left">` })}
-      ${filaAj({ btn: 'bExport', t: 'Descargar copia', s: `Todo vive solo en este móvil: ${S.movs.length} movimientos, ${nReglas} reglas y ${S.fijos.length} pagos fijos` })}
-      ${filaAj({ btn: 'bImport', t: 'Restaurar copia o reglas', s: 'Desde un archivo .json' })}
-      ${filaAj({ href: 'guia.html', t: 'Guía de uso', s: 'Cómo funciona cada pantalla y qué pasa con tus datos' })}
+      ${filaAj({ ic: IC.file, bg: 'var(--butter)', btn: 'bExport', t: 'Descargar copia', s: `Todo vive solo en este móvil: ${S.movs.length} movimientos, ${nReglas} reglas y ${S.fijos.length} pagos fijos` })}
+      ${filaAj({ ic: IC.repeat, bg: 'var(--sky)', btn: 'bImport', t: 'Restaurar copia o reglas', s: 'Desde un archivo .json' })}
+      ${filaAj({ ic: IC.spark, bg: 'var(--rose)', href: 'guia.html', t: 'Guía de uso', s: 'Cómo funciona cada pantalla y qué pasa con tus datos' })}
     </div>
     <button class="btn ghost" id="bBorrar" style="color:var(--berry);border:0;background:none">Borrar todos mis datos</button>
     <p class="xs muted" style="text-align:center;margin-top:8px">Brisa v${VERSION_APP}</p>`;
@@ -2654,7 +2671,7 @@
     let pin = '';
     const pintar = (msg, error) => {
       cont.innerHTML = `<div class="lk-msg ${error ? 'lk-err' : ''}">${msg || titulo}</div>
-        <div class="lk-dots" role="img" aria-label="${pin.length} de 4 números">${[0, 1, 2, 3].map((i) => `<i class="${i < pin.length ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="lk-dots" role="img" aria-label="${pin.length} de 4 números">${[0, 1, 2, 3].map((i) => (i < pin.length ? PIX.full : PIX.empty).replace('<svg', '<svg width="28" height="24"')).join('')}</div>
         <div class="lk-keys">${['1', '2', '3', '4', '5', '6', '7', '8', '9', conHuella ? 'h' : '', '0', 'del'].map((k) =>
           k === '' ? '<span></span>' : k === 'h' ? `<button type="button" class="lk-key lk-flat" data-k="h" aria-label="Usar huella">${IC_HUELLA(28)}</button>`
           : k === 'del' ? `<button type="button" class="lk-key lk-flat" data-k="del" aria-label="Borrar">${IC_BORRAR}</button>`
@@ -2814,6 +2831,7 @@
       });
     };
     if (q('#bNuevaMeta')) q('#bNuevaMeta').onclick = nuevaMeta;
+    if (q('#bApartarSw')) q('#bApartarSw').onclick = () => { if (S.consejos.tipoNo.apartar) delete S.consejos.tipoNo.apartar; else S.consejos.tipoNo.apartar = true; guardar(); render(); toast(S.consejos.tipoNo.apartar ? 'Vale, no te aviso para apartar' : 'Te aviso cuando puedas apartar'); };
     if (q('#bRetenido')) q('#bRetenido').onclick = () => pedirNumero('¿Cuánto tienes retenido ahora? (pon 0 si nada)', S.retenido ? S.retenido.importe : 0, (v) => {
       S.retenido = { importe: Math.max(0, v), fecha: hoyIso() }; guardar(); toast('Retenido actualizado');
     });
