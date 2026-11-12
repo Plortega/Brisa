@@ -1,9 +1,9 @@
-/* Brisa · v0.9.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.9.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.9.1';
+  const VERSION_APP = '0.9.2';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -333,6 +333,7 @@
   function numero(v) { return parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0; }
   // v0.9.0 · Bra-Píxel: galleta para tu inicial y barra ondulada (formas de Material 3)
   const FLOR = (() => { let d = ''; for (let i = 0; i <= 240; i++) { const t = i / 240 * Math.PI * 2, r = 49 * (1 + 0.055 * Math.cos(12 * t)); d += (i ? 'L' : 'M') + (52 + r * Math.cos(t)).toFixed(1) + ' ' + (52 + r * Math.sin(t)).toFixed(1); } return d + 'Z'; })();
+  const SOL = (() => { let d = ''; for (let i = 0; i <= 180; i++) { const t = i / 180 * Math.PI * 2, r = 22 * (1 + 0.1 * Math.cos(8 * t)); d += (i ? 'L' : 'M') + (26 + r * Math.cos(t)).toFixed(1) + ' ' + (26 + r * Math.sin(t)).toFixed(1); } return d + 'Z'; })();
   const COOKIE = (() => { let d = ''; for (let i = 0; i <= 180; i++) { const t = i / 180 * Math.PI * 2, r = 23 * (1 + 0.07 * Math.cos(9 * t)); d += (i ? 'L' : 'M') + (26 + r * Math.cos(t)).toFixed(1) + ' ' + (26 + r * Math.sin(t)).toFixed(1); } return d + 'Z'; })();
   function yo() {
     const n = (S.perfil && S.perfil.nombre || '').trim();
@@ -1251,7 +1252,7 @@
   }
   R.inicio = () => {
     if (!S.movs.length) return `
-      <div class="top"><div><div class="small muted">Hola, ${esc(S.perfil.nombre)}</div><h1>${DIAS[new Date().getDay()]}${SPARK}</h1></div>${yo()}</div>
+      <div class="top"><div><div class="small muted">${DIAS[new Date().getDay()]} · día de no liarla</div><h1>Hola, ${esc(S.perfil.nombre)}${SPARK}</h1></div>${yo()}</div>
       <div class="hero"><div class="h1" style="font-size:24px">Aún no tengo tus movimientos</div><p style="color:var(--t-hero);line-height:1.5">Sube el Excel de tu banco y en unos segundos te digo cuánto puedes gastar hoy.</p></div>
       <a class="btn" href="#subir">Subir mi Excel</a>`;
     const c = ciclo();
@@ -1264,9 +1265,27 @@
     const pronto = c.fijosC.filter((q) => q.pendiente > 0 && q.fecha >= hoy && dias(hoy, q.fecha) <= 3);
     const sug = sugerirFijos();
     const plz = plazosNuevos();
+    const usado = c.rescates - c.forzados;
+    const tarjetaRescates = (ficha) => `<a class="${ficha ? 'tile tile-w' : 'card'}" href="#metas" style="display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--ink)">
+      ${ficha ? `<span class="small" style="font-weight:700">Rescates del ahorro</span><span class="num" style="font-size:28px;line-height:1.1">${eur(usado)} <span class="xs muted" style="font-family:var(--sans)">de ${eur(S.limiteRescates)}</span></span>`
+        : `<span class="row"><b style="font-size:15px">Rescates del ahorro</b><span class="small muted"><span class="num" style="font-size:19px;color:var(--ink)">${eur(usado)}</span> de ${eur(S.limiteRescates)}</span></span>`}
+      ${onda(S.limiteRescates > 0 ? usado / S.limiteRescates : 0, usado > S.limiteRescates ? 'var(--peach-d)' : 'var(--berry)', 'var(--rose)', `${eur(usado)} rescatados de ${eur(S.limiteRescates)}`)}
+      <span class="${ficha ? 'xs' : 'small'} muted">${c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : usado > 0 ? 'Tu yo del futuro te está mirando.' : 'Ni un euro rescatado. Así se hace.'}</span>
+    </a>`;
+    // v0.9.2 · Bra-Píxel: debajo del número, dos fichas (finde, próximo cobro o rescates), como en el lienzo
+    const enFinde = aDate(hoy).getDay() >= 5 || aDate(hoy).getDay() === 0;
+    const fichas = [];
+    if (c.finde.length) fichas.push(`<a class="tile" href="#finde" style="background:var(--peach);display:flex;flex-direction:column;gap:6px">
+      <svg width="40" height="40" viewBox="0 0 52 52" aria-hidden="true" style="stroke:none"><path d="${SOL}" style="fill:var(--peach-d);fill-opacity:.28"/><path d="M26 15l2.2 8.8 8.8 2.2-8.8 2.2L26 37l-2.2-8.8L15 26l8.8-2.2z" style="fill:var(--card)"/></svg>
+      <span class="small" style="font-weight:700;color:var(--t-peach)">${enFinde ? 'Te quedan este finde' : 'Finde para brillar'}</span><span class="num">${eur(c.findeTotal)}</span></a>`);
+    if (pronto.length) { const q = pronto[0]; fichas.push(`<a class="tile tile-w" href="#fijos" style="display:flex;flex-direction:column;gap:6px">
+      <span style="width:40px;height:40px;border-radius:14px;background:var(--lilac);color:var(--lilac-d);display:flex;align-items:center;justify-content:center">${IC.cal.replace('<svg', '<svg width="20" height="20"')}</span>
+      <span class="small" style="font-weight:700;color:var(--muted)">${cuando(q.fecha).charAt(0).toUpperCase() + cuando(q.fecha).slice(1)} viene ${esc(q.fijo.nombre)} a cobrar</span><span class="num">${eur(q.pendiente, true)}</span></a>`); }
+    const rescEnFicha = fichas.length < 2;
+    if (rescEnFicha) fichas.push(tarjetaRescates(true));
     return `
     <div class="top">
-      <div><div class="small muted">Hola, ${esc(S.perfil.nombre)}</div><h1>${DIAS[new Date().getDay()]}${SPARK}</h1></div>
+      <div><div class="small muted">${DIAS[new Date().getDay()]} · día de no liarla</div><h1>Hola, ${esc(S.perfil.nombre)}${SPARK}</h1></div>
       ${yo()}
     </div>
     <section class="hero">
@@ -1277,29 +1296,27 @@
       ${c.modoSaldo && c.disponible <= 0 ? '<div style="font-size:13px;line-height:1.5;color:var(--t-hero);margin-bottom:10px">Ojo: tus pagos pendientes superan tu saldo.</div>' : ''}
       <div class="hearts" role="img" aria-label="Te quedan ${n} de 10 corazones: ${eur(c.libre)} libres de ${eur(c.presupuesto)}">${corazones(n, 21, 18)}</div>
       <div class="small" style="color:var(--t-hero2);margin-top:8px;line-height:1.45;font-weight:600">${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} al cobro y ${c.libre > 0 ? `${eur(c.libre)} para aguantarlos. Tú puedes, reina.` : 'sin dinero libre. Lo arreglamos con unos días tranquilos.'}</div>
-      <button type="button" id="bNumero" style="display:block;margin-top:8px;padding:6px 0;background:none;border:0;font:inherit;font-size:13px;font-weight:800;color:var(--berry-d);cursor:pointer">¿De dónde sale? ›</button>
+      <div class="hero-acc">
+        <a class="btn" href="#comprar">${IC.bag.replace('<svg', '<svg width="18" height="18"')}¿Me lo compro?${S.deseos.length ? `<span class="hero-cnt">${S.deseos.length}</span>` : ''}</a>
+        <button type="button" id="bNumero" class="hero-info" aria-label="¿De dónde sale tu número?">${IC.info || ic2('M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0z', '<circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.01"/>')}</button>
+      </div>
     </section>
+    <div class="tiles">${fichas.slice(0, 2).join('')}</div>
+    ${rescEnFicha ? '' : tarjetaRescates(false)}
+    ${tarjetaConsejo()}
     ${tarjetaCiclo(c)}
     ${tarjetaAparta(c)}
-    <a class="cq-pill" href="#comprar"><span class="ic">${IC.bag}</span><b>¿Me lo compro?</b>${S.deseos.length ? `<span class="cnt">${S.deseos.length} ${S.deseos.length === 1 ? 'deseo' : 'deseos'}</span>` : ''}${IC.chev}</a>
-    ${tarjetaConsejo()}
     ${S.deseos.filter((d) => estadoDeseo(c, d.importe).cabe).slice(0, 1).map((d) => linkCard({ attrs: `data-deseo="${esc(d.id)}"`, style: 'background:var(--mint)', icStyle: 'color:var(--mint-d)', icon: IC.bag,
       titulo: `Ya cabe: ${esc(d.nombre)} (${eur(d.importe)})`, sub: 'Está en tu lista de deseos · toca para decidir', subStyle: 'color:var(--mint-d)' })).join('')}
     ${faltanFijos() ? linkCard({ href: '#fijos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Faltan tus pagos fijos', sub: 'Sin ellos tu número del día sale más alto de lo real. Añádelos o cárgalos desde Ajustes', subStyle: 'color:var(--t-peach)' }) : ''}
-    ${pronto.map((q) => linkCard({ href: '#fijos', style: 'background:var(--card);border:1px solid var(--line)', icStyle: 'background:var(--lilac);color:var(--lilac-d)', icon: IC.cal,
+    ${pronto.slice(1).map((q) => linkCard({ href: '#fijos', style: 'background:var(--card);border:1px solid var(--line)', icStyle: 'background:var(--lilac);color:var(--lilac-d)', icon: IC.cal,
       titulo: `${cuando(q.fecha).charAt(0).toUpperCase() + cuando(q.fecha).slice(1)} te cobran ${eur(q.pendiente, true)}`, sub: esc(q.fijo.nombre) + (q.de ? ` · cuota ${q.n} de ${q.de}` : '') + ' · ya está reservado' })).join('')}
-    ${c.finde.length ? linkCard({ href: '#finde', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.sun, titulo: `${aDate(hoy).getDay() >= 5 || aDate(hoy).getDay() === 0 ? 'Este finde te quedan' : 'Este finde te puedes permitir'} ${eur(c.findeTotal)}`, sub: 'Para brillar sin que el lunes duela', subStyle: 'color:var(--t-peach)' }) : ''}
     ${sug.length ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.repeat, titulo: sug.length === 1 ? 'Un pago se repite cada mes' : sug.length + ' pagos se repiten cada mes', sub: '¿Es un pago fijo? Un toque y lo apunto', subStyle: 'color:var(--butter-d)' }) : ''}
     ${S.retenido && S.retenido.importe > 0 && S.ultimaImportacion && S.retenido.fecha < S.ultimaImportacion.cuando ? linkCard({ href: '#fijos', style: 'background:var(--lilac)', icStyle: 'color:var(--lilac-d)', icon: IC.card, titulo: `¿Sigue retenido ${eur(S.retenido.importe)}?`, sub: 'Has subido un Excel nuevo: actualízalo para no descontarlo dos veces', subStyle: 'color:var(--lilac-d)' }) : ''}
     ${S.banco && S.banco.caducada ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Renueva el permiso con BBVA', sub: 'Ha caducado: un minuto y vuelvo a traer tus movimientos solos', subStyle: 'color:var(--t-peach)' })
       : bancoActivo() ? (diasPermiso() !== null && diasPermiso() <= 7 ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.alert, titulo: `Tu permiso con BBVA caduca en ${Math.max(0, diasPermiso())} ${diasPermiso() === 1 ? 'día' : 'días'}`, sub: 'Renuévalo ahora para no volver al Excel', subStyle: 'color:var(--butter-d)' }) : '')
         + tarjetaSync()
       : linkCard({ attrs: 'id="bSubirHome"', style: viejo ? 'background:var(--sky)' : 'background:var(--card);border:1px solid var(--line)', icStyle: (viejo ? '' : 'background:var(--sky);') + 'color:var(--sky-d)', icon: IC.file, titulo: viejo ? 'Toca subir el Excel' : 'Subir el Excel de la semana', sub: 'Datos hasta el ' + fmtF(ultimo) })}
-    <a class="card" href="#metas" style="display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--ink)">
-      <span class="row"><b style="font-size:15px">Rescates del ahorro</b><span class="small muted"><span class="num" style="font-size:19px;color:var(--ink)">${eur(c.rescates - c.forzados)}</span> de ${eur(S.limiteRescates)}</span></span>
-      ${onda(S.limiteRescates > 0 ? (c.rescates - c.forzados) / S.limiteRescates : 0, (c.rescates - c.forzados) > S.limiteRescates ? 'var(--peach-d)' : 'var(--berry)', 'var(--rose)', `${eur(c.rescates - c.forzados)} rescatados de ${eur(S.limiteRescates)}`)}
-      <span class="small muted">${c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : (c.rescates - c.forzados) > 0 ? 'Tu yo del futuro te está mirando.' : 'Ni un euro rescatado. Así se hace.'}</span>
-    </a>
     ${plz.length > 1 ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.card, titulo: `${plz.length} cargos de pago a plazos`, sub: [...new Set(plz.map((p) => p.prov))].join(', ') + ' · ¿cuántas cuotas quedan?', subStyle: 'color:var(--butter-d)' }) : tarjetaPlazos(plz)}
     ${tarjetaDevol()}
     ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:var(--t-peach)' }) : ''}
