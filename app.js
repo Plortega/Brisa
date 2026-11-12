@@ -1,9 +1,9 @@
-/* Brisa · v0.8.5 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.9.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.8.5';
+  const VERSION_APP = '0.9.0';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -331,6 +331,17 @@
   const mediana = (xs) => { const a = [...xs].sort((x, y) => x - y); const n = a.length; return n ? (n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2) : 0; };
   const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   function numero(v) { return parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0; }
+  // v0.9.0 · Bra-Píxel: galleta para tu inicial y barra ondulada (formas de Material 3)
+  const COOKIE = (() => { let d = ''; for (let i = 0; i <= 180; i++) { const t = i / 180 * Math.PI * 2, r = 23 * (1 + 0.07 * Math.cos(9 * t)); d += (i ? 'L' : 'M') + (26 + r * Math.cos(t)).toFixed(1) + ' ' + (26 + r * Math.sin(t)).toFixed(1); } return d + 'Z'; })();
+  function yo() {
+    const n = (S.perfil && S.perfil.nombre || '').trim();
+    return `<a class="yo" href="#ajustes" aria-label="Ajustes"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="${COOKIE}"/></svg><span aria-hidden="true">${esc((n.charAt(0) || '·').toUpperCase())}</span></a>`;
+  }
+  function onda(p, color, pista, aria) {
+    p = Math.max(0, Math.min(1, p)); const fin = 6 + 288 * p;
+    let d = 'M6 7'; for (let x = 8; x <= fin; x += 2) d += 'L' + x + ' ' + (7 + 3.5 * Math.sin(x / 4)).toFixed(2);
+    return `<svg class="wave" viewBox="0 0 300 14" preserveAspectRatio="none" role="img" aria-label="${aria}">${p > 0.02 ? `<path d="${d}" style="stroke:${color}" vector-effect="non-scaling-stroke"/>` : ''}${p < 0.98 ? `<path d="M${Math.min(294, fin + 9).toFixed(1)} 7L294 7" style="stroke:${pista}" vector-effect="non-scaling-stroke"/>` : ''}</svg>`;
+  }
   const SPARK = '<svg class="spark" viewBox="0 0 24 24" style="stroke:none" aria-hidden="true"><path d="M12 1.5c.7 5.2 2.6 7.3 8.5 8.5-5.9 1.2-7.8 3.3-8.5 8.5-.7-5.2-2.6-7.3-8.5-8.5 5.9-1.2 7.8-3.3 8.5-8.5z"/></svg>';
   const orn = (sz, color, pos, cls) => `<svg class="orn ${cls || ''}" style="${pos};fill:${color}" width="${sz}" height="${sz}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5c.7 5.2 2.6 7.3 8.5 8.5-5.9 1.2-7.8 3.3-8.5 8.5-.7-5.2-2.6-7.3-8.5-8.5 5.9-1.2 7.8-3.3 8.5-8.5z"/></svg>`;
   const heart = (sz, color, pos) => `<svg class="orn" style="${pos};fill:${color}" width="${sz}" height="${sz}" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-8-4.8-8-10.6A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.9c0 5.8-8 10.6-8 10.6z"/></svg>`;
@@ -1239,7 +1250,7 @@
   }
   R.inicio = () => {
     if (!S.movs.length) return `
-      <div class="top"><div><div class="small muted">Hola, ${esc(S.perfil.nombre)}</div><h1>${DIAS[new Date().getDay()]}${SPARK}</h1></div><a class="icon-btn" href="#ajustes" aria-label="Ajustes">${IC.gear}</a></div>
+      <div class="top"><div><div class="small muted">Hola, ${esc(S.perfil.nombre)}</div><h1>${DIAS[new Date().getDay()]}${SPARK}</h1></div>${yo()}</div>
       <div class="hero"><div class="h1" style="font-size:24px">Aún no tengo tus movimientos</div><p style="color:var(--t-hero);line-height:1.5">Sube el Excel de tu banco y en unos segundos te digo cuánto puedes gastar hoy.</p></div>
       <a class="btn" href="#subir">Subir mi Excel</a>`;
     const c = ciclo();
@@ -1255,16 +1266,16 @@
     return `
     <div class="top">
       <div><div class="small muted">Hola, ${esc(S.perfil.nombre)}</div><h1>${DIAS[new Date().getDay()]}${SPARK}</h1></div>
-      <a class="icon-btn" href="#ajustes" aria-label="Ajustes">${IC.gear}</a>
+      ${yo()}
     </div>
     <section class="hero">
       ${PIX.big.replace(/style="[^"]*"/, 'style="top:18px;right:20px"')}${PIX.spark.replace(/style="[^"]*"/, 'style="top:66px;right:30px"')}
-      <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">HOY PUEDES GASTAR</div>
+      <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">HOY TE PUEDES PERMITIR</div>
       <div class="big" style="margin:8px 0 10px">${eur(c.hoyPuedes)}</div>
       ${c.gastoHoy > 0 ? `<div class="small" style="color:var(--t-hero);margin:-4px 0 10px">De ${eur(c.hoyInicio)} · hoy llevas ${eur(c.gastoHoy)}${c.gastoHoy > c.hoyInicio ? `: te has pasado ${eur(c.gastoHoy - c.hoyInicio)}` : ''}</div>` : ''}
       ${c.modoSaldo && c.disponible <= 0 ? '<div style="font-size:13px;line-height:1.5;color:var(--t-hero);margin-bottom:10px">Ojo: tus pagos pendientes superan tu saldo.</div>' : ''}
       <div class="hearts" role="img" aria-label="Te quedan ${n} de 10 corazones: ${eur(c.libre)} libres de ${eur(c.presupuesto)}">${corazones(n, 21, 18)}</div>
-      <div class="row small" style="color:var(--t-hero2);margin-top:8px"><span style="white-space:nowrap">Te quedan ${n} de 10 ♡ · ${eur(c.libre)}</span><span style="white-space:nowrap">Hasta el ${aDate(c.fin).getDate()} · ${c.restantes} días</span></div>
+      <div class="small" style="color:var(--t-hero2);margin-top:8px;line-height:1.45;font-weight:600">${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} al cobro y ${c.libre > 0 ? `${eur(c.libre)} para aguantarlos. Tú puedes, reina.` : 'sin dinero libre. Lo arreglamos con unos días tranquilos.'}</div>
       <button type="button" id="bNumero" style="display:block;margin-top:8px;padding:6px 0;background:none;border:0;font:inherit;font-size:13px;font-weight:800;color:var(--berry-d);cursor:pointer">¿De dónde sale? ›</button>
     </section>
     ${tarjetaCiclo(c)}
@@ -1283,7 +1294,11 @@
       : bancoActivo() ? (diasPermiso() !== null && diasPermiso() <= 7 ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.alert, titulo: `Tu permiso con BBVA caduca en ${Math.max(0, diasPermiso())} ${diasPermiso() === 1 ? 'día' : 'días'}`, sub: 'Renuévalo ahora para no volver al Excel', subStyle: 'color:var(--butter-d)' }) : '')
         + tarjetaSync()
       : linkCard({ attrs: 'id="bSubirHome"', style: viejo ? 'background:var(--sky)' : 'background:var(--card);border:1px solid var(--line)', icStyle: (viejo ? '' : 'background:var(--sky);') + 'color:var(--sky-d)', icon: IC.file, titulo: viejo ? 'Toca subir el Excel' : 'Subir el Excel de la semana', sub: 'Datos hasta el ' + fmtF(ultimo) })}
-    ${linkCard({ href: '#metas', style: 'background:var(--card);border:1.5px dashed var(--dash)', icStyle: 'background:var(--rose);color:var(--berry)', icon: IC.uturn, titulo: `Rescates: ${eur(c.rescates - c.forzados)} de ${eur(S.limiteRescates)}`, sub: c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : 'Lo que ha vuelto de tu ahorro este mes' })}
+    <a class="card" href="#metas" style="display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--ink)">
+      <span class="row"><b style="font-size:15px">Rescates del ahorro</b><span class="small muted"><span class="num" style="font-size:19px;color:var(--ink)">${eur(c.rescates - c.forzados)}</span> de ${eur(S.limiteRescates)}</span></span>
+      ${onda(S.limiteRescates > 0 ? (c.rescates - c.forzados) / S.limiteRescates : 0, (c.rescates - c.forzados) > S.limiteRescates ? 'var(--peach-d)' : 'var(--berry)', 'var(--rose)', `${eur(c.rescates - c.forzados)} rescatados de ${eur(S.limiteRescates)}`)}
+      <span class="small muted">${c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : (c.rescates - c.forzados) > 0 ? 'Tu yo del futuro te está mirando.' : 'Ni un euro rescatado. Así se hace.'}</span>
+    </a>
     ${plz.length > 1 ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.card, titulo: `${plz.length} cargos de pago a plazos`, sub: [...new Set(plz.map((p) => p.prov))].join(', ') + ' · ¿cuántas cuotas quedan?', subStyle: 'color:var(--butter-d)' }) : tarjetaPlazos(plz)}
     ${tarjetaDevol()}
     ${rev ? linkCard({ href: '#movimientos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.spark, titulo: `${rev} ${rev === 1 ? 'movimiento' : 'movimientos'} por revisar`, sub: 'Un toque cada uno y los aprendo', subStyle: 'color:var(--t-peach)' }) : ''}
@@ -1645,6 +1660,12 @@
     const vivos = todos ? L : L.filter((k) => !C.no[k.clave] && !C.tipoNo[k.tipo]);
     return vivos.sort((a, b) => b.prio - a.prio);
   }
+  // v0.9.0 · voz Bra-Píxel: avisos con «OJO, REINA 👀» y lo que sobra con «GIRL MATH 💅»
+  function etiquetaBP(k) {
+    if (k.aviso) return 'OJO, REINA<span class="emo" aria-hidden="true">👀</span>';
+    if (k.tipo === 'apartar') return 'GIRL MATH<span class="emo" aria-hidden="true">💅</span>';
+    return k.etiqueta;
+  }
   function tarjetaConsejo() {
     const L = consejos(); if (!L.length) return '';
     const k = L[0];
@@ -1686,7 +1707,7 @@
     const L = consejos();
     const silenciados = Object.keys(S.consejos.no).length + Object.keys(S.consejos.tipoNo).length;
     const tarjeta = (k) => `<section class="rec ${k.aviso ? 'av' : ''}">
-      <div class="rec-h"><span class="ic">${k.icon}</span><div class="t"><div class="pix lab">${k.etiqueta}</div><b>${k.titulo}</b><p class="small">${k.sub}</p></div></div>
+      <div class="rec-h"><span class="ic">${k.icon}</span><div class="t"><div class="pix lab">${etiquetaBP(k)}</div><b>${k.titulo}</b><p class="small">${k.sub}</p></div></div>
       <div class="rec-b">${k.acciones.map(([a, t, p]) => a.charAt(0) === '#' ? `<a class="btn small ${p ? '' : 'ghost'}" href="${a}">${t}</a>` : `<button type="button" class="btn small ${p ? '' : 'ghost'}" data-rk="${esc(k.clave)}" data-ra="${a}">${t}</button>`).join('')}</div>
       ${k.nunca ? `<button type="button" class="rec-no" data-rk="${esc(k.clave)}" data-ra="nunca">No me lo vuelvas a decir</button>` : ''}
     </section>`;
@@ -2342,7 +2363,7 @@
       if (!s.length) { $sheet.close(); render(); if (hechas) toast('Listo: tus gastos cuentan solo tu parte'); return; }
       const { b, g, c } = s[0];
       $sheet.innerHTML = `
-        <div class="row" style="align-items:flex-start"><div><div class="pix" style="font-size:12px;color:var(--sky-d);letter-spacing:.5px">DEVOLUCIÓN${s.length > 1 ? ' · QUEDAN ' + s.length : ''}</div><div class="num" style="font-size:20px;margin-top:4px">¿Te devolvieron parte de esto?</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
+        <div class="row" style="align-items:flex-start"><div><div class="pix" style="font-size:12px;color:var(--sky-d);letter-spacing:.5px;display:flex;align-items:center">BIZUM DE TUS AMIGAS${s.length > 1 ? ' · QUEDAN ' + s.length : ''}<span class="emo" aria-hidden="true">🤑</span></div><div class="num" style="font-size:20px;margin-top:4px">¿Te devolvieron parte de esto?</div></div><button class="icon-btn" id="sCerrar" aria-label="Cerrar">${IC.close}</button></div>
         <div class="card dash" style="margin:14px 0;padding:4px 16px">
           ${filaDv(g, esc(c.categoria))}
           ${filaDv(b, 'te lo enviaron')}
@@ -2700,7 +2721,7 @@
     DEV = null;
     const r = ruta();
     $app.innerHTML = R[r]();
-    const conNav = ['inicio', 'movimientos', 'presupuesto', 'metas'].includes(r);
+    const conNav = ['inicio', 'movimientos', 'presupuesto', 'metas', 'ajustes'].includes(r);
     $nav.hidden = !conNav;
     $app.classList.toggle('full', !conNav);
     $nav.querySelectorAll('a').forEach((a) => a.classList.toggle('on', a.dataset.r === r));

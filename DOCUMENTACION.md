@@ -204,6 +204,7 @@ Función `banco` (Supabase Edge Function, con la sesión de la persona):
 
 | Versión | Fecha | Cambios |
 | --- | --- | --- |
+| 0.9.0 | 12 nov 2026 | Estilo Bra-Píxel: la distribución de Material 3 Expressive con el alma de Brisa. Barra de 5 pestañas (vuelve Ajustes) con la activa en píldora, tu inicial en una galleta en Inicio, tarjetas más redondas, control segmentado con el elegido relleno y rescates con barra ondulada. Voz más «sassy»: «HOY TE PUEDES PERMITIR», «X días al cobro y Y € para aguantarlos», consejos con «OJO, REINA 👀» y «GIRL MATH 💅», y devoluciones con «BIZUM DE TUS AMIGAS 🤑» |
 | 0.8.5 | 4 nov 2026 | Cuando BBVA falla un momento, Brisa reintenta sola antes de rendirse. Si la cuenta de ahorro no responde, la principal se actualiza igual. Si no responde la principal, lo dice («BBVA no responde ahora mismo») y lo intenta de nuevo al volver a abrir la app |
 | 0.8.4 | 3 nov 2026 | «Hoy puedes gastar» baja con lo que gastas hoy, en vez de repartir el gasto entre todos los días hasta el cobro |
 | 0.8.3 | 3 nov 2026 | Los movimientos de BBVA se actualizan cada vez que abres la app (si han pasado más de 5 minutos), en vez de cada 2 horas |

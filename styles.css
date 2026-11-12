@@ -213,3 +213,32 @@ div.aj-row{cursor:default}
 :root[data-theme="dark"] .nav{box-shadow:0 10px 30px rgba(0,0,0,.35)}
 :root[data-theme="dark"] .hero,:root[data-theme="dark"] .stitch{outline-color:rgba(255,255,255,.45)}
 :root[data-theme="dark"] .sheet::backdrop,:root[data-theme="dark"] .scrim{background:rgba(0,0,0,.5)}
+/* v0.9.0 · Bra-Píxel: la distribución de Material 3 Expressive con el alma de Brisa */
+.card{border-radius:26px}
+.hero{border-radius:34px;outline-offset:-9px}
+.tile{border-radius:24px}
+.link-card,.rec,.rec-home{border-radius:26px}
+.sheet{border-radius:34px 34px 0 0}
+/* Control segmentado: grupo de botones en píldora, el elegido relleno */
+.seg{border-radius:999px}
+.seg button{border-radius:999px;color:var(--ink)}
+.seg button[aria-pressed=true]{background:var(--berry);color:#fff;font-weight:800}
+.chip-b[aria-pressed=true]{border-style:dashed}
+/* Barra de pestañas: 5 destinos, el activo con su píldora encima del texto */
+.nav a{min-width:56px;gap:4px;border-radius:0;font-size:11px}
+.nav a .pi{width:56px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center}
+.nav a.on{background:none;outline:0;color:var(--ink);font-weight:800}
+.nav a.on .pi{background:var(--pill);outline:1.5px dashed var(--rose3);outline-offset:-1.5px;color:var(--berry-d)}
+/* Tu inicial en una galleta (forma de Material 3) */
+.yo{position:relative;width:50px;height:50px;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none}
+.yo svg{position:absolute;inset:0;width:50px;height:50px;stroke:none;fill:var(--berry)}
+.yo span{position:relative;font-family:var(--serif);font-style:italic;font-size:22px;color:#fff}
+/* Barra ondulada de progreso */
+.wave{display:block;width:100%;height:14px;overflow:visible}
+.wave path{fill:none;stroke-width:5;stroke-linecap:round}
+/* Antetítulos con emoji */
+.emo{font-family:system-ui,sans-serif;font-size:14px;line-height:1;margin-left:6px;vertical-align:-1px}
+.pix.lab,.pix-emo{display:flex;align-items:center}
+:root[data-theme="dark"] .seg button[aria-pressed=true]{color:#2B1623}
+:root[data-theme="dark"] .yo span{color:#2B1623}
+:root[data-theme="dark"] .yo svg{fill:var(--berry-d)}
