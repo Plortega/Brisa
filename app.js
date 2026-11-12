@@ -1,9 +1,9 @@
-/* Brisa · v0.9.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.9.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.9.0';
+  const VERSION_APP = '0.9.1';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -332,6 +332,7 @@
   const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   function numero(v) { return parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0; }
   // v0.9.0 · Bra-Píxel: galleta para tu inicial y barra ondulada (formas de Material 3)
+  const FLOR = (() => { let d = ''; for (let i = 0; i <= 240; i++) { const t = i / 240 * Math.PI * 2, r = 49 * (1 + 0.055 * Math.cos(12 * t)); d += (i ? 'L' : 'M') + (52 + r * Math.cos(t)).toFixed(1) + ' ' + (52 + r * Math.sin(t)).toFixed(1); } return d + 'Z'; })();
   const COOKIE = (() => { let d = ''; for (let i = 0; i <= 180; i++) { const t = i / 180 * Math.PI * 2, r = 23 * (1 + 0.07 * Math.cos(9 * t)); d += (i ? 'L' : 'M') + (26 + r * Math.cos(t)).toFixed(1) + ' ' + (26 + r * Math.sin(t)).toFixed(1); } return d + 'Z'; })();
   function yo() {
     const n = (S.perfil && S.perfil.nombre || '').trim();
@@ -983,11 +984,11 @@
     const ultMes = MESES_L[(aDate(hoyIso()).getMonth() + CQ.n - 1) % 12];
     let v;
     if (plazos) v = { emoji: '🤌', tag: 'CARGA TUS PRÓXIMOS MESES', bg: 'var(--peach)', tc: 'var(--peach-d)', t: `Tus fijos suben ${eur(cuota, true)} al mes`,
-      b: `Hoy pagas la 1.ª cuota y las otras ${CQ.n - 1} van a tus pagos fijos hasta ${ultMes}.${j.rescate > 0 ? ` Esa cuota ya te quita ${eur(j.rescate)} de este mes.` : ''}` };
-    else if (j.kind === 'go') v = { emoji: '💅', tag: 'TE CABE', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Te cabe sin tocar tu ahorro',
+      b: `Hoy pagas la 1.ª cuota y las otras ${CQ.n - 1} van a tus pagos fijos hasta ${ultMes}. A plazos tampoco es gratis.${j.rescate > 0 ? ` Esa cuota ya te quita ${eur(j.rescate)} de este mes.` : ''}` };
+    else if (j.kind === 'go') v = { emoji: '💅', tag: 'TE CABE', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Te cabe, reina. Sin tocar tu ahorro',
       b: `Sale de tus ${eur(j.margen)} de margen para extras, y aún te quedan ${eur(j.margen - A)}.` };
     else v = { emoji: '💸', tag: 'TE QUITA AHORRO', bg: 'var(--peach)', tc: 'var(--peach-d)', t: `Te quita ${eur(j.rescate)} de tu ahorro`,
-      b: `${j.margen > 0 ? `Tienes ${eur(j.margen)} de margen para extras: los otros ${eur(j.rescate)}` : `Este mes no tienes margen para extras: esos ${eur(j.rescate)}`} saldrían de tu ahorro o de tu número de cada día.${j.kind === 'next' ? ` Si esperas al cobro del ${aDate(c.fin).getDate()}, te cabe mejor.` : ''}` };
+      b: `${j.margen > 0 ? `Tienes ${eur(j.margen)} de margen para extras: los otros ${eur(j.rescate)}` : `Este mes no tienes margen para extras: esos ${eur(j.rescate)}`} saldrían de tu ahorro o de tu número de cada día. Eso no es gratis, es prestado.${j.kind === 'next' ? ` Si esperas al cobro del ${aDate(c.fin).getDate()}, te cabe mejor.` : ''}` };
     const base = Math.max(1, c.sobres.length ? c.presuBase : c.presupuesto);
     const hAntes = corazonesN(c), hDesp = Math.max(0, Math.min(10, Math.round(Math.max(0, j.left) / base * 10)));
     const w = (x) => x.replace('<svg', '<svg width="21" height="18"');
@@ -1287,7 +1288,7 @@
     ${faltanFijos() ? linkCard({ href: '#fijos', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Faltan tus pagos fijos', sub: 'Sin ellos tu número del día sale más alto de lo real. Añádelos o cárgalos desde Ajustes', subStyle: 'color:var(--t-peach)' }) : ''}
     ${pronto.map((q) => linkCard({ href: '#fijos', style: 'background:var(--card);border:1px solid var(--line)', icStyle: 'background:var(--lilac);color:var(--lilac-d)', icon: IC.cal,
       titulo: `${cuando(q.fecha).charAt(0).toUpperCase() + cuando(q.fecha).slice(1)} te cobran ${eur(q.pendiente, true)}`, sub: esc(q.fijo.nombre) + (q.de ? ` · cuota ${q.n} de ${q.de}` : '') + ' · ya está reservado' })).join('')}
-    ${c.finde.length ? linkCard({ href: '#finde', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.sun, titulo: `${aDate(hoy).getDay() >= 5 || aDate(hoy).getDay() === 0 ? 'Este finde te quedan' : 'Este finde puedes gastar'} ${eur(c.findeTotal)}`, sub: 'Viernes a domingo · con tu número de cada día', subStyle: 'color:var(--t-peach)' }) : ''}
+    ${c.finde.length ? linkCard({ href: '#finde', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.sun, titulo: `${aDate(hoy).getDay() >= 5 || aDate(hoy).getDay() === 0 ? 'Este finde te quedan' : 'Este finde te puedes permitir'} ${eur(c.findeTotal)}`, sub: 'Para brillar sin que el lunes duela', subStyle: 'color:var(--t-peach)' }) : ''}
     ${sug.length ? linkCard({ href: '#fijos', style: 'background:var(--butter)', icStyle: 'color:var(--butter-d)', icon: IC.repeat, titulo: sug.length === 1 ? 'Un pago se repite cada mes' : sug.length + ' pagos se repiten cada mes', sub: '¿Es un pago fijo? Un toque y lo apunto', subStyle: 'color:var(--butter-d)' }) : ''}
     ${S.retenido && S.retenido.importe > 0 && S.ultimaImportacion && S.retenido.fecha < S.ultimaImportacion.cuando ? linkCard({ href: '#fijos', style: 'background:var(--lilac)', icStyle: 'color:var(--lilac-d)', icon: IC.card, titulo: `¿Sigue retenido ${eur(S.retenido.importe)}?`, sub: 'Has subido un Excel nuevo: actualízalo para no descontarlo dos veces', subStyle: 'color:var(--lilac-d)' }) : ''}
     ${S.banco && S.banco.caducada ? linkCard({ attrs: 'id="bBanco"', style: 'background:var(--peach)', icStyle: 'color:var(--peach-d)', icon: IC.alert, titulo: 'Renueva el permiso con BBVA', sub: 'Ha caducado: un minuto y vuelvo a traer tus movimientos solos', subStyle: 'color:var(--t-peach)' })
@@ -1821,7 +1822,7 @@
     const cards = [];
     const dif = d.gasto - d.gasto0;
     cards.push({ tag: 'ESTA SEMANA', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Gastaste<br>' + eur(d.gasto),
-      b: (d.gasto0 > 0 ? (Math.abs(dif) < 5 ? 'Casi lo mismo que la semana anterior.' : dif < 0 ? `Son ${eur(-dif)} menos que la semana anterior. Vas en buena dirección.` : `Son ${eur(dif)} más que la semana anterior. Sin drama: miramos dónde.`) : 'Del ' + fmtF(d.ini) + ' al ' + fmtF(d.fin) + ', con la fecha real de cada compra.')
+      b: (d.gasto0 > 0 ? (Math.abs(dif) < 5 ? 'Casi lo mismo que la semana anterior.' : dif < 0 ? `Son ${eur(-dif)} menos que la semana anterior. Girl math: técnicamente, los has ganado.` : `Son ${eur(dif)} más que la semana anterior. Sin drama: miramos dónde.`) : 'Del ' + fmtF(d.ini) + ' al ' + fmtF(d.fin) + ', con la fecha real de cada compra.')
         + (d.grandes.length ? ` Aparte, ${d.grandes.length === 1 ? 'un extra' : d.grandes.length + ' extras'}: ${d.grandes.map((m) => esc(nombreMov(m)) + ' (' + eur(-m.importe) + ')').join(', ')}.` : ''),
       big: d.gasto0 > 0 ? ['La semana anterior', eur(d.gasto0)] : ['Tu ritmo semanal', eur(d.semanal)] });
     if (d.top) {
@@ -1885,7 +1886,7 @@
     <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><div style="flex-grow:1"><h1>Modo finde${SPARK}</h1><div class="small muted">De viernes a domingo, un solo número</div></div></div>
     <section class="hero">
       ${PIX.spark.replace(/style="[^"]*"/, 'style="top:22px;right:26px"')}
-      <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">${enFinde ? 'TE QUEDAN ESTE FINDE' : 'ESTE FINDE PUEDES GASTAR'}</div>
+      <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">${enFinde ? 'TE QUEDAN ESTE FINDE' : 'ESTE FINDE TE PUEDES PERMITIR'}</div>
       <div class="big" style="margin:8px 0 10px">${eur(c.findeTotal)}${enFinde && gastado ? `<span class="small muted" style="font-family:var(--sans);letter-spacing:0;margin-left:8px">de ${eur(total)}</span>` : ''}</div>
       <div class="hearts" role="img" aria-label="${n} de 10 corazones del finde">${corazones(enFinde ? n : 10, 21, 18)}</div>
       <div class="card" style="margin:14px 0 0;background:rgba(255,255,255,.75);border:0;padding:6px 16px">
@@ -1915,23 +1916,58 @@
   }
 
   let verTodos = 60;
+  // v0.9.1 · Bra-Píxel: categoría probable de lo que está por revisar, según el tipo de comercio que indica BBVA
+  const PISTAS = [[/restaurantes y cafeterias|restauracion/, 'Comer fuera'], [/alimentacion|supermercado|hipermercado/, 'Supermercado'],
+    [/moda, calzado|compras a distancia|hogar, muebles|electronica|grandes almacenes/, 'Compras'], [/droguerias y perfumerias|peluqueria|estetica/, 'Cuidado personal'],
+    [/espectaculos, museos|ocio|cines?\b/, 'Ocio y planes'], [/farmacia|sanidad|optica/, 'Salud'], [/gasolinera|estaciones de servicio/, 'Coche y gasolina'],
+    [/taxi|transporte|aparcamiento/, 'Transporte'], [/hoteles|agencias de viaje|aerolineas/, 'Viajes']];
+  function adivinarCat(m) {
+    const t = B.limpiar((m.concepto || '') + ' ' + (m.tipo || '') + ' ' + (m.observaciones || ''));
+    const p = PISTAS.find(([re]) => re.test(t));
+    return p && ELEGIBLES.includes(p[1]) ? p[1] : null;
+  }
+  function asignarCat(m, categoria, recordar) {
+    if (recordar) {
+      const k = B.claveRegla(m); const prev = S.reglas.reglasUsuario[k];
+      S.reglas.reglasUsuario[k] = prev && typeof prev === 'object' ? { ...prev, categoria } : categoria;
+      delete S.overrides[m.id];
+    } else S.overrides[m.id] = categoria;
+    guardar();
+  }
+  function tituloDia(f) {
+    const d = dias(f, hoyIso());
+    if (d === 0) return 'Hoy';
+    if (d === 1) return 'Ayer';
+    return DIAS[aDate(f).getDay()] + ' ' + aDate(f).getDate() + ' de ' + MESES_L[aDate(f).getMonth()];
+  }
   R.movimientos = () => {
     const rev = porRevisar();
     const lista = S.movs.slice(0, verTodos);
-    const fila = (m) => {
+    const fila = (m, conFecha) => {
       const c = cat(m);
+      const extra = (c.aplazado ? ' · aplazado' : '') + (c.devolucion ? ' · devolución' : '') + (devueltoDe(m.id) ? (-m.importe - devueltoDe(m.id) > 0.004 ? ' · tu parte ' + eur(-m.importe - devueltoDe(m.id), true) : ' · te salió gratis') : '');
       return `<button class="mov" data-mov="${esc(m.id)}">
         <span class="av" style="background:${COLORES[c.categoria] || 'var(--card)'};${c.categoria === 'Por revisar' ? 'border:1.5px dashed var(--rose3)' : ''}">${iconoCat(c.categoria)}</span>
-        <span class="t"><span class="n">${esc(nombreMov(m))}</span><span class="xs muted"><span class="chip" style="background:${COLORES[c.categoria] || 'var(--card)'}">${esc(c.categoria)}</span> ${fmtF(m.fecha)}${c.aplazado ? ' · aplazado' : ''}${c.devolucion ? ' · devolución' : ''}${devueltoDe(m.id) ? (-m.importe - devueltoDe(m.id) > 0.004 ? ' · tu parte ' + eur(-m.importe - devueltoDe(m.id), true) : ' · te salió gratis') : ''}</span></span>
+        <span class="t"><span class="n">${esc(nombreMov(m))}</span><span class="xs muted">${esc(c.categoria)}${conFecha ? ' · ' + fmtF(m.fecha) : ''}${extra}</span></span>
         <span class="amt ${m.importe > 0 ? 'pos' : ''}">${m.importe > 0 ? '+' : ''}${eur(m.importe, true)}</span></button>`;
     };
+    // Lo dudoso, de uno en uno: un toque para la categoría probable o el desplegable para elegir otra
+    const tarjetaRev = (m) => {
+      const c = cat(m); const g = adivinarCat(m);
+      return `<section class="rv">
+        <button class="rv-h" data-mov="${esc(m.id)}"><span class="rv-q" aria-hidden="true">?</span>
+          <span class="t"><span class="n">${esc(nombreMov(m))}</span><span class="xs">${esc(c.motivo || '¿Y esto qué fue, cariño?')}</span></span>
+          <span class="amt ${m.importe > 0 ? 'pos' : ''}">${m.importe > 0 ? '+' : ''}${eur(m.importe, true)}</span></button>
+        <div class="split">${g ? `<button type="button" data-asig="${esc(m.id)}" data-c="${esc(g)}">${iconoCat(g)}Es ${esc(g)}</button>` : `<button type="button" data-mov="${esc(m.id)}">Elegir categoría</button>`}<button type="button" class="split-m" data-mov="${esc(m.id)}" aria-label="Elegir otra categoría para ${esc(nombreMov(m))}">${IC.chev.replace('<svg', '<svg style="transform:rotate(90deg)"')}</button></div>
+      </section>`;
+    };
+    const grupos = []; for (const m of lista) { const u = grupos[grupos.length - 1]; if (u && u.f === m.fecha) u.ms.push(m); else grupos.push({ f: m.fecha, ms: [m] }); }
     return `
-    <div class="top"><div><h1>Movimientos${SPARK}</h1><div class="small muted">Del Excel que subiste. Tú solo confirmas lo dudoso.</div></div></div>
-    ${S.movs.length ? `<div class="card" style="background:var(--mint);border:0;display:flex;gap:12px;align-items:center"><span style="color:var(--mint-d);width:22px;height:22px;display:inline-flex">${IC.spark}</span><span><b>${S.movs.length - rev.length} de ${S.movs.length}</b> ordenados solos${rev.length ? '<br><span class="small">' + rev.length + ' necesitan un vistazo</span>' : ''}</span></div>` : ''}
+    <div class="top"><div><h1>Movimientos${SPARK}</h1><div class="small muted">Yo los ordeno. Tú solo confirmas lo dudoso.</div></div></div>
+    ${S.movs.length ? `<div class="card" style="background:var(--mint);border:0;display:flex;gap:12px;align-items:center"><span style="color:var(--mint-d);width:22px;height:22px;display:inline-flex">${IC.spark}</span><span><b>${S.movs.length - rev.length} de ${S.movs.length}</b> ordenados yo solita${rev.length ? '<br><span class="small">' + rev.length + (rev.length === 1 ? ' necesita' : ' necesitan') + ' un vistazo tuyo</span>' : ''}</span></div>` : ''}
     ${tarjetaDevol()}
-    ${rev.length ? `<div class="h2">Por revisar</div><div class="card" style="padding:4px 16px">${rev.slice(0, 15).map(fila).join('')}</div>` : ''}
-    <div class="h2">Todos</div>
-    ${S.movs.length ? `<div class="card" style="padding:4px 16px">${lista.map(fila).join('')}</div>` : '<div class="empty">Aún no hay movimientos. <a href="#subir">Sube tu Excel</a>.</div>'}
+    ${rev.length ? `<div class="h2">Por revisar</div>${rev.slice(0, 3).map(tarjetaRev).join('')}${rev.length > 3 ? `<div class="grp">${rev.slice(3, 15).map((m) => fila(m, true)).join('')}</div>` : ''}` : ''}
+    ${S.movs.length ? grupos.map((g) => `<div class="dia">${tituloDia(g.f)}</div><div class="grp">${g.ms.map((m) => fila(m)).join('')}</div>`).join('') : '<div class="empty">Aún no hay movimientos. <a href="#subir">Sube tu Excel</a>.</div>'}
     ${S.movs.length > verTodos ? '<button class="btn ghost" id="bMas">Ver más</button>' : ''}`;
   };
 
@@ -2095,7 +2131,7 @@
     const linea = (txt, v, signo) => v ? `<div class="row small"><span>${txt}</span><span class="num" style="color:${signo === '+' ? 'var(--mint-d)' : 'var(--berry)'}">${signo}${eur(v)}</span></div>` : '';
     const eta = metaEta(aporte).replace(/^«.*?» /, '');
     return `
-    <div class="top"><div><h1>Tus metas${SPARK}</h1><div class="small muted">Primero un colchón. Luego, lo que tú quieras.</div></div></div>
+    <div class="top"><div><h1>Tus metas${SPARK}</h1><div class="small muted">Una detrás de otra. Sin dramas, sin prisas.</div></div></div>
     <section class="card" style="display:flex;flex-direction:column;gap:6px">
       <div class="row"><span class="small muted">Tu ahorro</span><span class="num" style="font-size:28px">${eur(A.saldo)}</span></div>
       ${S.ahorro.base ? `<div class="row small muted"><span>Saldo de partida</span><span class="num">${eur(S.ahorro.base)}</span></div>` : ''}
@@ -2105,19 +2141,18 @@
     </section>
     ${A.metas.map((m) => {
       const pc = Math.min(100, Math.round(m.ahorrado / m.objetivo * 100));
-      const dash = (pc / 100 * 276.5).toFixed(0);
       const es = m === activa;
       return `<section class="hero" style="background:${es ? 'var(--mint)' : 'var(--card)'};display:flex;gap:16px;align-items:center;padding:20px;${es ? '' : 'outline:0;border:1px solid var(--line)'}">
         ${es ? orn(14, '#fff', 'bottom:16px;right:22px') : ''}
-        <div style="position:relative;width:96px;height:96px;flex-shrink:0">
-          <svg width="96" height="96" viewBox="0 0 104 104" role="img" aria-label="${pc} % completado"><circle cx="52" cy="52" r="44" style="stroke:var(--wash)" stroke-width="10"/>${pc > 0 ? `<circle cx="52" cy="52" r="44" style="stroke:var(--mint-b)" stroke-width="10" stroke-dasharray="${dash} 277" transform="rotate(-90 52 52)"/>` : ''}</svg>
+        <div style="position:relative;width:104px;height:104px;flex-shrink:0">
+          <svg width="104" height="104" viewBox="0 0 104 104" role="img" aria-label="${pc} % completado">${es ? `<path d="${FLOR}" style="fill:var(--card);stroke:none"/>` : ''}<circle cx="52" cy="52" r="36" style="stroke:${es ? 'var(--bar-l)' : 'var(--wash)'}" stroke-width="9"/>${pc > 0 ? `<circle cx="52" cy="52" r="36" style="stroke:var(--mint-b)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(pc / 100 * 226.2).toFixed(1)} 227" transform="rotate(-90 52 52)"/>` : ''}</svg>
           <span class="num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px">${pc}%</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:5px;flex-grow:1">
-          <span class="num" style="font-size:19px">${esc(m.nombre)}</span>
+          ${es && pc < 100 ? '<span class="pix" style="font-size:12px;letter-spacing:.6px;color:var(--mint-d)">LLENÁNDOSE AHORA</span>' : ''}<span class="num" style="font-size:19px">${esc(m.nombre)}</span>
           <span class="small">${eur(m.ahorrado)} de ${eur(m.objetivo)}</span>
           <div class="hearts" style="gap:3px" role="img" aria-label="${Math.round(pc / 10)} de 10 corazones">${corazones(pc / 10, 14, 12)}</div>
-          <span class="xs">${pc >= 100 ? '¡Conseguida!' : es ? eur(aporte) + '/mes' + (eta ? ' · ' + eta : '') : 'Empieza al terminar la anterior'}</span>
+          <span class="xs">${pc >= 100 ? '¡Conseguida, reina!' : es ? eur(aporte) + '/mes' + (eta ? ' · ' + eta : '') : 'Empieza al terminar la anterior'}</span>
         </div>
       </section>`;
     }).join('')}
@@ -2335,12 +2370,8 @@
         guardar(); $sheet.close(); render(); return;
       }
       if (e.target.closest('#sGuardar') && elegida) {
-        if ($sheet.querySelector('#sRecordar').checked) {
-          const k = B.claveRegla(m); const prev = S.reglas.reglasUsuario[k];
-          S.reglas.reglasUsuario[k] = prev && typeof prev === 'object' ? { ...prev, categoria: elegida } : elegida;
-          delete S.overrides[m.id];
-        } else S.overrides[m.id] = elegida;
-        guardar(); $sheet.close(); render(); toast('Aprendido');
+        asignarCat(m, elegida, $sheet.querySelector('#sRecordar').checked);
+        $sheet.close(); render(); toast('Aprendido');
       }
     };
     $sheet.showModal();
@@ -2746,6 +2777,10 @@
     $app.querySelectorAll('[data-mov]').forEach((b) => b.onclick = () => abrirMov(b.dataset.mov));
     if (q('#bDevol')) q('#bDevol').onclick = () => abrirDevol();
     if (q('#bMas')) q('#bMas').onclick = () => { verTodos += 60; render(); };
+    $app.querySelectorAll('[data-asig]').forEach((b) => b.onclick = () => {
+      const m = S.movs.find((x) => x.id === b.dataset.asig); if (!m) return;
+      asignarCat(m, b.dataset.c, true); render(); toast(`Hecho: ${b.dataset.c}. Me lo apunto para los parecidos`);
+    });
     $app.querySelectorAll('[data-ritmo2]').forEach((b) => b.onclick = () => { S.perfil.ritmo = b.dataset.ritmo2; guardar(); render(); });
     if (q('#bAplicar')) q('#bAplicar').onclick = aplicarPresupuesto;
     if (q('#bViaje')) q('#bViaje').onclick = nuevoViaje;

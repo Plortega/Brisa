@@ -242,3 +242,21 @@ div.aj-row{cursor:default}
 :root[data-theme="dark"] .seg button[aria-pressed=true]{color:#2B1623}
 :root[data-theme="dark"] .yo span{color:#2B1623}
 :root[data-theme="dark"] .yo svg{fill:var(--berry-d)}
+/* v0.9.1 · Bra-Píxel: listas agrupadas por día y lo dudoso con botón doble */
+.dia{font-size:13px;font-weight:700;color:var(--muted);margin:18px 6px 8px}
+.grp{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+.grp .mov{background:var(--card);border:0;border-radius:6px;padding:10px 14px;min-height:60px}
+.grp .mov:first-child{border-top-left-radius:22px;border-top-right-radius:22px}
+.grp .mov:last-child{border-bottom-left-radius:22px;border-bottom-right-radius:22px}
+.rv{background:var(--rose);border-radius:28px;padding:14px;margin-bottom:10px;display:flex;flex-direction:column;gap:12px}
+.rv-h{display:flex;align-items:center;gap:12px;width:100%;background:none;border:0;padding:0;text-align:left;cursor:pointer;color:var(--ink)}
+.rv-h .t{flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rv-h .n{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rv-h .xs{color:var(--t-hero2)}
+.rv-q{width:44px;height:44px;border-radius:22px;background:var(--card);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-style:italic;font-size:22px;color:var(--berry);flex-shrink:0}
+.split{display:flex;gap:2px}
+.split button{min-height:46px;border:0;background:var(--berry);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.split button:first-child{flex:1;border-radius:23px 6px 6px 23px;padding:0 16px}
+.split .split-m{width:52px;border-radius:6px 23px 23px 6px}
+.split svg{width:18px;height:18px}
+:root[data-theme="dark"] .split button{color:#2B1623}
