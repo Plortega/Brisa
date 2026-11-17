@@ -1,9 +1,9 @@
-/* Brisa · v0.10.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.11.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.10.2';
+  const VERSION_APP = '0.11.0';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -985,8 +985,8 @@
     const ultMes = MESES_L[(aDate(hoyIso()).getMonth() + CQ.n - 1) % 12];
     let v;
     if (plazos) v = { emoji: '🤌', tag: 'CARGA TUS PRÓXIMOS MESES', bg: 'var(--peach)', tc: 'var(--peach-d)', t: `Tus fijos suben ${eur(cuota, true)} al mes`,
-      b: `Hoy pagas la 1.ª cuota y las otras ${CQ.n - 1} van a tus pagos fijos hasta ${ultMes}. A plazos tampoco es gratis.${j.rescate > 0 ? ` Esa cuota ya te quita ${eur(j.rescate)} de este mes.` : ''}` };
-    else if (j.kind === 'go') v = { emoji: '💅', tag: 'TE CABE', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Te cabe, reina. Sin tocar tu ahorro',
+      b: `Hoy pagas la 1.ª cuota y las otras ${CQ.n - 1} van a tus pagos fijos hasta ${ultMes}. A plazos sigue costando lo mismo, solo que disfrazado.${j.rescate > 0 ? ` Esa cuota ya te quita ${eur(j.rescate)} de este mes.` : ''}` };
+    else if (j.kind === 'go') v = { emoji: '💅', tag: 'TE CABE', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Te cabe, reina. Cómpratelo sin culpa',
       b: `Sale de tus ${eur(j.margen)} de margen para extras, y aún te quedan ${eur(j.margen - A)}.` };
     else v = { emoji: '💸', tag: 'TE QUITA AHORRO', bg: 'var(--peach)', tc: 'var(--peach-d)', t: `Te quita ${eur(j.rescate)} de tu ahorro`,
       b: `${j.margen > 0 ? `Tienes ${eur(j.margen)} de margen para extras: los otros ${eur(j.rescate)}` : `Este mes no tienes margen para extras: esos ${eur(j.rescate)}`} saldrían de tu ahorro o de tu número de cada día. Eso no es gratis, es prestado.${j.kind === 'next' ? ` Si esperas al cobro del ${aDate(c.fin).getDate()}, te cabe mejor.` : ''}` };
@@ -1289,7 +1289,7 @@
         ${c.sobres.length ? `<a href="#presupuesto"><span class="dot" style="background:var(--mint-b)"></span>Tus sobres<b>${eur(r.sob)}</b></a>` : ''}
         <span><span class="dot" style="background:var(--berry)"></span>Libre<b>${eur(r.lib)}</b></span>
       </div>`}
-      <div class="small" style="color:var(--t-hero2);margin-top:10px;line-height:1.45;font-weight:600">${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} al cobro. ${c.hoyPuedes > 0 ? `${c.sobres.length ? 'Hoy, sin tocar tus sobres' : 'Hoy te puedes permitir'}: ${eur(c.hoyPuedes)}. Tú puedes, reina.` : 'Hoy toca día tranquilo.'}</div>
+      <div class="small" style="color:var(--t-hero2);margin-top:10px;line-height:1.45;font-weight:600">${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} al cobro. ${c.hoyPuedes > 0 ? `${c.sobres.length ? 'Hoy, sin tocar tus sobres' : 'Hoy te puedes permitir'}: ${eur(c.hoyPuedes)}. Gástalos con estilo, no con ansia.` : 'Hoy toca día de cero gastos. Tú puedes.'}</div>
       <div class="hero-acc">
         <a class="btn" href="#comprar">${IC.bag.replace('<svg', '<svg width="18" height="18"')}¿Me lo compro?${S.deseos.length ? `<span class="hero-cnt">${S.deseos.length}</span>` : ''}</a>
         <button type="button" id="bNumero" class="hero-info" aria-label="¿De dónde salen tus números?">${IC.info || ic2('M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0z', '<circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.01"/>')}</button>
@@ -1303,7 +1303,7 @@
     const tiles = c.sobres.map((x) => {
       const q = x.tope - x.usado; const vacio = q <= 0.5;
       const n = x.tope > 0 ? Math.max(0, Math.min(10, Math.round(q / x.tope * 10))) : 0;
-      let pista = vacio ? (x.usado > x.tope + 0.5 ? `Te has pasado ${eur(x.usado - x.tope)}` : 'Vacío hasta el cobro')
+      let pista = vacio ? (x.usado > x.tope + 0.5 ? `Te has pasado ${eur(x.usado - x.tope)}` : 'Cerrado hasta el cobro, cariño')
         : x.id === 'ocio' ? (() => { const f = findesQuedan(c); return f ? `${f} ${f === 1 ? 'finde' : 'findes'} por delante` : `≈ ${eur(q / c.restantes)}/día`; })()
         : `≈ ${eur(q / c.restantes)}/día`;
       if (x.id === 'compras' && comp.cuotas > 0) pista = `+ ${eur(comp.cuotas)} de cuotas`;
@@ -1326,7 +1326,7 @@
     <a class="card" href="#presupuesto" style="background:${justo ? 'var(--butter)' : 'var(--rose)'};border:0;display:flex;flex-direction:column;gap:6px;text-decoration:none;color:var(--ink)">
       <span class="row"><b style="font-size:15px">${c.sobres.length ? 'Todo lo demás' : 'Tu día a día'}</b><span class="num" style="font-size:20px;white-space:nowrap">${eur(c.libre)}</span></span>
       <span class="hearts" role="img" aria-label="Te quedan ${nL} de 10 corazones: ${eur(c.libre)} libres">${corazones(nL, 17, 15)}</span>
-      <span class="small" style="color:${justo ? 'var(--butter-d)' : 'var(--t-hero)'};line-height:1.45">${justo ? '<b>OJO, REINA 👀</b> · ' : ''}Súper, estanco y lo que no tiene sobre. Hoy: ${eur(c.hoyPuedes)}.${extra > 5 ? ` Los otros ${eur(extra)} libres de tu cuenta son para apartar o para el mes que viene.` : ''}</span>
+      <span class="small" style="color:${justo ? 'var(--butter-d)' : 'var(--t-hero)'};line-height:1.45">${justo ? '<b>OJO, REINA 👀</b> · ' : ''}Súper, estanco y lo que no tiene sobre. Hoy: ${eur(c.hoyPuedes)}.${extra > 5 ? ` Los otros ${eur(extra)} libres de tu cuenta: apártalos y luego presumes.` : ''}</span>
     </a>`;
   }
   // Si un sobre se pasa: aviso y propuesta de sacarlo de Ocio y planes (lo que debe notar el derroche)
@@ -1340,13 +1340,13 @@
       const hay = don && don.id !== x.id ? Math.floor(Math.max(0, don.tope - don.usado)) : 0;
       const tapa = Math.min(ex, hay);
       const txt = tapa > 0
-        ? `${x.nombre} se ha pasado ${eur(ex)}. ¿${tapa < ex ? `Sacamos ${eur(tapa)}` : 'Lo sacamos'} de ${don.nombre}?${tapa < ex ? ` El resto, ${eur(ex - tapa)}, sale de Todo lo demás.` : ''}`
+        ? `${x.nombre} se ha pasado ${eur(ex)}. Pasa en las mejores familias. ¿${tapa < ex ? `Que ponga ${eur(tapa)}` : 'Lo paga'} ${don.nombre}?${tapa < ex ? ` El resto, ${eur(ex - tapa)}, sale de Todo lo demás.` : ''}`
         : `${x.nombre} se ha pasado ${eur(ex)}. ${x.id === DONANTE ? 'Sale' : `${don ? don.nombre : 'Ocio y planes'} ya está a cero, así que sale`} de Todo lo demás.`;
       return `<section class="card" style="background:var(--peach);border:0;display:flex;flex-direction:column;gap:10px">
         <div class="pix" style="font-size:12px;letter-spacing:.8px;color:var(--peach-d)">OJO, REINA 👀</div>
         <div style="font-size:15px;line-height:1.45;color:var(--t-peach)">${txt}</div>
         <div class="btn-row" style="display:flex;gap:8px">${tapa > 0
-          ? `<button type="button" class="btn" data-tapar="${x.id}" data-de="${DONANTE}" data-imp="${tapa}" style="flex:1">Sí, de ${don.nombre.split(' ')[0]}</button><button type="button" class="btn ghost" data-sobre="${x.id}" style="flex:1">Elijo yo</button>`
+          ? `<button type="button" class="btn" data-tapar="${x.id}" data-de="${DONANTE}" data-imp="${tapa}" style="flex:1">Que pague ${don.nombre.split(' ')[0]}</button><button type="button" class="btn ghost" data-sobre="${x.id}" style="flex:1">Elijo yo</button>`
           : `<button type="button" class="btn ghost" data-sbvisto="${x.id}" data-imp="${ex}" style="flex:1">Vale</button>${c.sobres.some((o) => o.id !== x.id && o.tope - o.usado >= 1) ? `<button type="button" class="btn ghost" data-sobre="${x.id}" style="flex:1">Elijo yo</button>` : ''}`}</div>
       </section>`;
     }).join('');
@@ -1357,7 +1357,7 @@
     m[id] = (m[id] || 0) + imp; m[de] = (m[de] || 0) - imp;
     guardar(); render();
     const d = SOBRES.find((k) => k.id === de);
-    toast(de === DONANTE ? `${d.nombre} invita esta vez 💅` : `${eur(imp)} pasados desde ${d.nombre}`);
+    toast(de === DONANTE ? `Hecho. ${d.nombre} paga la ronda 💅` : `${eur(imp)} pasados desde ${d.nombre}`);
   }
   // Compras del ciclo, con las cuotas de Klarna y Scalapay: las cuentas claras
   function tarjetaCompras(c) {
@@ -1371,12 +1371,14 @@
         <div class="lg-r"><span>Compras nuevas</span><b>${eur(k.nuevas)}${sb ? `<span class="xs muted" style="font-weight:600"> de ${eur(sb.tope)}</span>` : ''}</b></div>
         <div class="lg-r"><span>Cuotas de Klarna, Scalapay…${k.cuotasFaltan > 0 ? `<span class="xs muted"> (${eur(k.cuotasFaltan)} aún por cobrar)</span>` : ''}</span><b>${eur(k.cuotas)}</b></div>
       </div>
-      ${k.debes > 0 ? `<div class="small" style="line-height:1.45;color:var(--lilac-d)">Aún debes ${eur(k.debes)} en cuotas${k.ultima ? `, hasta ${MESES_L[aDate(k.ultima).getMonth()]} de ${k.ultima.slice(0, 4)}` : ''}. Las cuentas claras, reina.</div>` : ''}
+      ${k.debes > 0 ? `<div class="small" style="line-height:1.45;color:var(--lilac-d)">Aún debes ${eur(k.debes)} en cuotas${k.ultima ? `, hasta ${MESES_L[aDate(k.ultima).getMonth()]} de ${k.ultima.slice(0, 4)}` : ''}. ${k.ultima ? `Tu yo de ${MESES_L[aDate(k.ultima).getMonth()]} aún paga los caprichos de hoy.` : 'Las cuentas claras, reina.'}</div>` : ''}
     </section>`;
   }
+  // v0.11.0 · voz spicy: un subtítulo para cada día
+  const SALUDO = ['día de reina descansada', 'lunes de cara lavada y cartera cerrada', 'día de no liarla', 'mitad de semana, cartera entera', 'jueves: casi finde, casi tentación', 'la tarjeta quiere salir, tú decides', 'sábado de brillar con cabeza'];
   R.inicio = () => {
     if (!S.movs.length) return `
-      <div class="top"><div><div class="small muted">${DIAS[new Date().getDay()]} · día de no liarla</div><h1>Hola, ${esc(S.perfil.nombre)}${SPARK}</h1></div>${yo()}</div>
+      <div class="top"><div><div class="small muted">${DIAS[new Date().getDay()]} · ${SALUDO[new Date().getDay()]}</div><h1>Hola, ${esc(S.perfil.nombre)}${SPARK}</h1></div>${yo()}</div>
       <div class="hero"><div class="h1" style="font-size:24px">Aún no tengo tus movimientos</div><p style="color:var(--t-hero);line-height:1.5">Sube el Excel de tu banco y en unos segundos te digo cuánto puedes gastar hoy.</p></div>
       <a class="btn" href="#subir">Subir mi Excel</a>`;
     const c = ciclo();
@@ -1395,7 +1397,7 @@
       ${ficha ? `<span class="small" style="font-weight:700">Rescates del ahorro</span><span class="num" style="font-size:28px;line-height:1.1">${eur(usado)} <span class="xs muted" style="font-family:var(--sans)">de ${eur(S.limiteRescates)}</span></span>`
         : `<span class="row"><b style="font-size:15px">Rescates del ahorro</b><span class="small muted"><span class="num" style="font-size:19px;color:var(--ink)">${eur(usado)}</span> de ${eur(S.limiteRescates)}</span></span>`}
       ${onda(S.limiteRescates > 0 ? usado / S.limiteRescates : 0, usado > S.limiteRescates ? 'var(--peach-d)' : 'var(--berry)', 'var(--rose)', `${eur(usado)} rescatados de ${eur(S.limiteRescates)}`)}
-      <span class="${ficha ? 'xs' : 'small'} muted">${c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : usado > 0 ? 'Tu yo del futuro te está mirando.' : 'Ni un euro rescatado. Así se hace.'}</span>
+      <span class="${ficha ? 'xs' : 'small'} muted">${c.forzados ? `Más ${eur(c.forzados)} para cubrir números rojos` : usado > 0 ? 'Tu yo del futuro ha visto eso 👀' : 'Cero rescates. Icónica.'}</span>
     </a>`;
     // v0.9.2 · Bra-Píxel: debajo del número, dos fichas (finde, próximo cobro o rescates), como en el lienzo
     const enFinde = aDate(hoy).getDay() >= 5 || aDate(hoy).getDay() === 0;
@@ -1410,7 +1412,7 @@
     if (rescEnFicha) fichas.push(tarjetaRescates(true));
     return `
     <div class="top">
-      <div><div class="small muted">${DIAS[new Date().getDay()]} · día de no liarla</div><h1>Hola, ${esc(S.perfil.nombre)}${SPARK}</h1></div>
+      <div><div class="small muted">${DIAS[new Date().getDay()]} · ${SALUDO[new Date().getDay()]}</div><h1>Hola, ${esc(S.perfil.nombre)}${SPARK}</h1></div>
       ${yo()}
     </div>
     ${conCuenta ? heroCuenta(c) : `<section class="hero">
@@ -1636,8 +1638,8 @@
     $app.querySelectorAll('[data-sobre]').forEach((b) => b.onclick = () => abrirSobre(b.dataset.sobre));
     $app.querySelectorAll('[data-tapar]').forEach((b) => b.onclick = () => taparSobre(b.dataset.tapar, b.dataset.de, Number(b.dataset.imp)));
     $app.querySelectorAll('[data-sbvisto]').forEach((b) => b.onclick = () => { const c = ciclo(); const So = S.sobres; So.vistos = So.vistos || {}; const v = So.vistos[c.inicio] = So.vistos[c.inicio] || {}; v[b.dataset.sbvisto] = Number(b.dataset.imp); guardar(); render(); });
-    if (q('#sbEmpezar')) q('#sbEmpezar').onclick = () => { const c = ciclo(); S.sobres = { desde: dias(c.inicio, hoyIso()) <= 3 ? c.inicio : c.fin, lista: SOBRES.map((x) => ({ id: x.id, importe: x.importe })), mover: {} }; guardar(); render(); toast('¡Sobres listos!'); };
-    if (q('#sbYa')) q('#sbYa').onclick = () => { const c = ciclo(); if (S.sobres) S.sobres.desde = c.inicio; else S.sobres = { desde: c.inicio, lista: SOBRES.map((x) => ({ id: x.id, importe: x.importe })), mover: {} }; guardar(); render(); toast('¡Sobres listos!'); };
+    if (q('#sbEmpezar')) q('#sbEmpezar').onclick = () => { const c = ciclo(); S.sobres = { desde: dias(c.inicio, hoyIso()) <= 3 ? c.inicio : c.fin, lista: SOBRES.map((x) => ({ id: x.id, importe: x.importe })), mover: {} }; guardar(); render(); toast('¡Sobres listos! Que empiece el show'); };
+    if (q('#sbYa')) q('#sbYa').onclick = () => { const c = ciclo(); if (S.sobres) S.sobres.desde = c.inicio; else S.sobres = { desde: c.inicio, lista: SOBRES.map((x) => ({ id: x.id, importe: x.importe })), mover: {} }; guardar(); render(); toast('¡Sobres listos! Que empiece el show'); };
     if (q('#rpMenos')) q('#rpMenos').onclick = () => { repAhorro -= 5; render(); };
     if (q('#rpMas')) q('#rpMas').onclick = () => { repAhorro += 5; render(); };
     const fijar = (hecho) => { const c = ciclo(); S.aparta[c.inicio] = { ahorro: repAhorro, hecho, fecha: hoyIso() }; guardar(); repAhorro = null; };
@@ -2041,7 +2043,7 @@
       <div class="pix" style="font-size:14px;color:var(--peach-d);letter-spacing:.5px">${enFinde ? 'TE QUEDAN ESTE FINDE' : 'ESTE FINDE TE PUEDES PERMITIR'}</div>
       <div class="big" style="margin:8px 0 10px">${eur(c.findeTotal)}${enFinde && gastado ? `<span class="small muted" style="font-family:var(--sans);letter-spacing:0;margin-left:8px">de ${eur(total)}</span>` : ''}</div>
       <div class="hearts" role="img" aria-label="${n} de 10 corazones del finde">${corazones(enFinde ? n : 10, 21, 18)}</div>
-      <div class="small" style="color:var(--t-peach);margin-top:8px;font-weight:600;position:relative">Para brillar sin que el lunes duela.</div>
+      <div class="small" style="color:var(--t-peach);margin-top:8px;font-weight:600;position:relative">Brilla el finde, que el lunes no te pase factura.</div>
     </section>
     ${c.finde.length ? `<div class="dia">Tus próximos días</div><div class="dias-g">${c.finde.map((r) => `<div class="dia-t${r.fecha === hoy ? ' hoy' : ''}"><span class="xs" style="font-weight:800;color:var(--muted)">${r.fecha === hoy ? 'Hoy' : DIAS_C[aDate(r.fecha).getDay()]} ${aDate(r.fecha).getDate()}</span><span class="num" style="font-size:19px">${eur(r.importe)}</span></div>`).join('')}</div>` : '<div class="card small">Tu cobro llega antes del finde: el número cambiará con tu nómina.</div>'}
     <button type="button" class="link-card" id="bProximos" style="background:var(--card);border:1px solid var(--line)"><span class="t"><span class="small" style="line-height:1.45">El mismo número cada día. Además, ${habitoFinde(c.H)} <b style="color:var(--berry)">Ver tus próximos días</b></span></span>${IC.chev}</button>
@@ -2200,7 +2202,7 @@
     const maxP = Math.max(...H.pesos);
     const eta = metaEta(P.paraTi);
     return `
-    <div class="top"><div><h1>Presupuesto${SPARK}</h1><div class="small muted">Cada euro con su sobre. Organizada y divina.</div></div></div>
+    <div class="top"><div><h1>Presupuesto${SPARK}</h1><div class="small muted">Cada euro en su sobre. Controlada, no aburrida.</div></div></div>
     <div class="seg" role="group" aria-label="Ritmo de ahorro">${ritmoBotones(P.ritmo, 'data-ritmo2')}</div>
     ${seccionSobres(c)}
     <section class="card dash" style="display:flex;flex-direction:column;gap:10px;border-radius:28px;padding:18px 20px">
@@ -2324,7 +2326,7 @@
       <div class="row"><b style="font-size:15px">Rescates del ahorro</b><span class="small muted"><span class="num" style="font-size:19px;color:var(--ink)">${eur(usado)}</span> de ${eur(S.limiteRescates)}</span></div>
       ${onda(S.limiteRescates > 0 ? usado / S.limiteRescates : 0, usado > S.limiteRescates ? 'var(--peach-d)' : 'var(--berry)', 'var(--rose)', `${eur(usado)} rescatados de ${eur(S.limiteRescates)}`)}
       ${c.forzados ? `<p class="xs" style="margin:0;color:var(--berry)">Además, ${eur(c.forzados)} volvieron para tapar números rojos. No cuentan en tu límite: son la señal de que el banco aparta más de lo que tu mes aguanta.</p>` : ''}
-      <p class="xs muted" style="margin:0;line-height:1.45">${usado > S.limiteRescates ? `Este mes te has pasado ${eur(usado - S.limiteRescates)} del límite. ` : ''}Sacar no está prohibido, reina: solo queremos que se vea.</p>
+      <p class="xs muted" style="margin:0;line-height:1.45">${usado > S.limiteRescates ? `Este mes te has pasado ${eur(usado - S.limiteRescates)} del límite. ` : ''}Sacar no está prohibido, reina. Pero aquí todo se ve.</p>
     </section>
     <button type="button" class="btn ghost" id="bNuevaMeta" style="border:1.5px dashed var(--rose3)">${IC.plus.replace('<svg', '<svg width="18" height="18"')}Siguiente capricho, pero con plan</button>`;
   };
@@ -2387,7 +2389,7 @@
     const sug = sugerirFijos();
     const plz = plazosNuevos();
     return `
-    <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><div style="flex-grow:1"><h1>Pagos fijos${SPARK}</h1><div class="small muted">Lo que sale sí o sí. Sin sorpresas.</div></div></div>
+    <div class="top"><a class="icon-btn" href="#inicio" aria-label="Volver">${IC.back}</a><div style="flex-grow:1"><h1>Pagos fijos${SPARK}</h1><div class="small muted">Lo que sale sí o sí. Esto no se negocia.</div></div></div>
     <section class="hero">
       ${PIX.big.replace(/style="[^"]*"/, 'style="top:18px;right:20px"')}
       <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">TOTAL PENDIENTE</div>
@@ -2416,7 +2418,7 @@
     const nReglas = Object.keys(S.reglas.reglasUsuario).length + S.reglas.palabras.length + S.reglas.importes.length;
     const desde = S.movs.length ? S.movs[S.movs.length - 1].fecha.slice(0, 7) : null;
     return `
-    <div class="top"><div><h1>Ajustes${SPARK}</h1><div class="small muted">Tu Brisa, a tu manera.</div></div></div>
+    <div class="top"><div><h1>Ajustes${SPARK}</h1><div class="small muted">Tu Brisa, tus reglas.</div></div></div>
     <section class="card" style="background:var(--rose);border:0;display:flex;align-items:center;gap:14px;border-radius:28px">
       <span class="yo" aria-hidden="true"><svg viewBox="0 0 52 52"><path d="${COOKIE}"/></svg><span>${esc((p.nombre || '?').charAt(0).toUpperCase())}</span></span>
       <span style="display:flex;flex-direction:column;gap:2px"><b style="font-size:17px">${esc(p.nombre)}</b><span class="small" style="color:var(--t-hero2)">Cobras el ${esc(p.diaCobro)} · ritmo ${RITMOS[p.ritmo].label.toLowerCase()}${desde ? ' · datos desde ' + mesTexto(desde) : ''}</span></span>
@@ -2539,7 +2541,7 @@
       }
       if (e.target.closest('#sGuardar') && elegida) {
         asignarCat(m, elegida, $sheet.querySelector('#sRecordar').checked);
-        $sheet.close(); render(); toast('Aprendido');
+        $sheet.close(); render(); toast('Aprendido. No me lo tendrás que repetir');
       }
     };
     $sheet.showModal();
@@ -2879,7 +2881,7 @@
       };
       $sheet.querySelector('#sQuitar').onclick = () => confirmarPin('Quitar el desbloqueo', () => { guardarC(null); $sheet.close(); render(); toast('Desbloqueo quitado'); });
       $sheet.querySelector('#sCambiar').onclick = () => confirmarPin('Cambiar el PIN', () => nuevoPin(c.cred));
-      if (q2('#sHuella')) q2('#sHuella').onclick = async () => { try { const cred = await crearHuella(); guardarC({ ...c, cred }); $sheet.close(); render(); toast('Huella añadida'); } catch (e) { toast('No he podido usar la huella en este móvil'); } };
+      if (q2('#sHuella')) q2('#sHuella').onclick = async () => { try { const cred = await crearHuella(); guardarC({ ...c, cred }); $sheet.close(); render(); toast('Huella añadida. Aquí solo entras tú'); } catch (e) { toast('No he podido usar la huella en este móvil'); } };
       $sheet.showModal(); return;
     }
     nuevoPin(null);
@@ -2947,7 +2949,7 @@
     if (q('#bMas')) q('#bMas').onclick = () => { verTodos += 60; render(); };
     $app.querySelectorAll('[data-asig]').forEach((b) => b.onclick = () => {
       const m = S.movs.find((x) => x.id === b.dataset.asig); if (!m) return;
-      asignarCat(m, b.dataset.c, true); render(); toast(`Hecho: ${b.dataset.c}. Me lo apunto para los parecidos`);
+      asignarCat(m, b.dataset.c, true); render(); toast(`Hecho: ${b.dataset.c}. Apuntado para los parecidos, que yo no olvido`);
     });
     $app.querySelectorAll('[data-ritmo2]').forEach((b) => b.onclick = () => { S.perfil.ritmo = b.dataset.ritmo2; guardar(); render(); });
     if (q('#bAplicar')) q('#bAplicar').onclick = aplicarPresupuesto;
