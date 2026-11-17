@@ -1,9 +1,9 @@
-/* Brisa · v0.11.1 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.11.2 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.11.1';
+  const VERSION_APP = '0.11.2';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -986,7 +986,7 @@
     let v;
     if (plazos) v = { emoji: '🤌', tag: 'CARGA TUS PRÓXIMOS MESES', bg: 'var(--peach)', tc: 'var(--peach-d)', t: `Tus fijos suben ${eur(cuota, true)} al mes`,
       b: `Hoy pagas la 1.ª cuota y las otras ${CQ.n - 1} van a tus pagos fijos hasta ${ultMes}. A plazos sigue costando lo mismo, solo que disfrazado.${j.rescate > 0 ? ` Esa cuota ya te quita ${eur(j.rescate)} de este mes.` : ''}` };
-    else if (j.kind === 'go') v = { emoji: '💅', tag: 'TE CABE', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Te cabe, reina. Cómpratelo sin culpa',
+    else if (j.kind === 'go') v = { emoji: '💅', tag: 'TE CABE', bg: 'var(--rose)', tc: 'var(--berry-d)', t: 'Te cabe, guapita. Cómpratelo sin culpa',
       b: `Sale de tus ${eur(j.margen)} de margen para extras, y aún te quedan ${eur(j.margen - A)}.` };
     else v = { emoji: '💸', tag: 'TE QUITA AHORRO', bg: 'var(--peach)', tc: 'var(--peach-d)', t: `Te quita ${eur(j.rescate)} de tu ahorro`,
       b: `${j.margen > 0 ? `Tienes ${eur(j.margen)} de margen para extras: los otros ${eur(j.rescate)}` : `Este mes no tienes margen para extras: esos ${eur(j.rescate)}`} saldrían de tu ahorro o de tu número de cada día. Eso no es gratis, es prestado. ¿De verdad lo necesitas o solo lo quieres?${j.kind === 'next' ? ` Si esperas al cobro del ${aDate(c.fin).getDate()}, te cabe mejor.` : ''}` };
@@ -1289,7 +1289,7 @@
         ${c.sobres.length ? `<a href="#presupuesto"><span class="dot" style="background:var(--mint-b)"></span>Tus sobres<b>${eur(r.sob)}</b></a>` : ''}
         <span><span class="dot" style="background:var(--berry)"></span>Libre<b>${eur(r.lib)}</b></span>
       </div>`}
-      <div class="small" style="color:var(--t-hero2);margin-top:10px;line-height:1.45;font-weight:600">${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} al cobro. ${c.hoyPuedes > 0 ? `${c.sobres.length ? 'Hoy, sin tocar tus sobres' : 'Hoy te puedes permitir'}: ${eur(c.hoyPuedes)}. Gástalos con estilo, no con ansia.` : c.gastoHoy > c.hoyInicio + 0.5 ? `Hoy ya te has pasado ${eur(c.gastoHoy - c.hoyInicio)}. Cartera a dormir, reina.` : 'Hoy toca día de cero gastos. Tú puedes.'}</div>
+      <div class="small" style="color:var(--t-hero2);margin-top:10px;line-height:1.45;font-weight:600">${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} al cobro. ${c.hoyPuedes > 0 ? `${c.sobres.length ? 'Hoy, sin tocar tus sobres' : 'Hoy te puedes permitir'}: ${eur(c.hoyPuedes)}. Gástalos con estilo, no con ansia.` : c.gastoHoy > c.hoyInicio + 0.5 ? `Hoy ya te has pasado ${eur(c.gastoHoy - c.hoyInicio)}. Cartera a dormir, querida.` : 'Hoy toca día de cero gastos. Tú puedes.'}</div>
       <div class="hero-acc">
         <a class="btn" href="#comprar">${IC.bag.replace('<svg', '<svg width="18" height="18"')}¿Me lo compro?${S.deseos.length ? `<span class="hero-cnt">${S.deseos.length}</span>` : ''}</a>
         <button type="button" id="bNumero" class="hero-info" aria-label="¿De dónde salen tus números?">${IC.info || ic2('M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0z', '<circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.01"/>')}</button>
@@ -1326,7 +1326,7 @@
     <a class="card" href="#presupuesto" style="background:${justo ? 'var(--butter)' : 'var(--rose)'};border:0;display:flex;flex-direction:column;gap:6px;text-decoration:none;color:var(--ink)">
       <span class="row"><b style="font-size:15px">${c.sobres.length ? 'Todo lo demás' : 'Tu día a día'}</b><span class="num" style="font-size:20px;white-space:nowrap">${eur(c.libre)}</span></span>
       <span class="hearts" role="img" aria-label="Te quedan ${nL} de 10 corazones: ${eur(c.libre)} libres">${corazones(nL, 17, 15)}</span>
-      <span class="small" style="color:${justo ? 'var(--butter-d)' : 'var(--t-hero)'};line-height:1.45">${justo ? '<b>OJO, REINA 👀</b> Vas justita. ' : ''}Súper, estanco y lo que no tiene sobre. Hoy: ${eur(c.hoyPuedes)}.${extra > 5 ? ` Los otros ${eur(extra)} libres de tu cuenta: apártalos y luego presumes.` : ''}</span>
+      <span class="small" style="color:${justo ? 'var(--butter-d)' : 'var(--t-hero)'};line-height:1.45">${justo ? '<b>OJO, CARIÑO 👀</b> Vas justita. ' : ''}Súper, estanco y lo que no tiene sobre. Hoy: ${eur(c.hoyPuedes)}.${extra > 5 ? ` Los otros ${eur(extra)} libres de tu cuenta: apártalos y luego presumes.` : ''}</span>
     </a>`;
   }
   // Si un sobre se pasa: aviso y propuesta de sacarlo de Ocio y planes (lo que debe notar el derroche)
@@ -1343,7 +1343,7 @@
         ? `${x.nombre} se ha pasado ${eur(ex)}. Esta te la paso, pero que no se repita. ¿${tapa < ex ? `Que ponga ${eur(tapa)}` : 'Lo paga'} ${don.nombre}?${tapa < ex ? ` El resto, ${eur(ex - tapa)}, sale de Todo lo demás.` : ''}`
         : `${x.nombre} se ha pasado ${eur(ex)}. ${x.id === DONANTE ? 'Sale' : `${don ? don.nombre : 'Ocio y planes'} ya está a cero, así que sale`} de Todo lo demás.`;
       return `<section class="card" style="background:var(--peach);border:0;display:flex;flex-direction:column;gap:10px">
-        <div class="pix" style="font-size:12px;letter-spacing:.8px;color:var(--peach-d)">OJO, REINA 👀</div>
+        <div class="pix" style="font-size:12px;letter-spacing:.8px;color:var(--peach-d)">OJO, CARIÑO 👀</div>
         <div style="font-size:15px;line-height:1.45;color:var(--t-peach)">${txt}</div>
         <div class="btn-row" style="display:flex;gap:8px">${tapa > 0
           ? `<button type="button" class="btn" data-tapar="${x.id}" data-de="${DONANTE}" data-imp="${tapa}" style="flex:1">Que pague ${don.nombre.split(' ')[0]}</button><button type="button" class="btn ghost" data-sobre="${x.id}" style="flex:1">Elijo yo</button>`
@@ -1371,12 +1371,12 @@
         <div class="lg-r"><span>Compras nuevas</span><b>${eur(k.nuevas)}${sb ? `<span class="xs muted" style="font-weight:600"> de ${eur(sb.tope)}</span>` : ''}</b></div>
         <div class="lg-r"><span>Cuotas de Klarna, Scalapay…${k.cuotasFaltan > 0 ? `<span class="xs muted"> (${eur(k.cuotasFaltan)} aún por cobrar)</span>` : ''}</span><b>${eur(k.cuotas)}</b></div>
       </div>
-      ${sb && k.nuevas > sb.tope + 0.5 ? `<div class="small" style="line-height:1.45;font-weight:700;color:var(--berry-d)">Te has pasado ${eur(k.nuevas - sb.tope)} del sobre de Compras. ¿De verdad hacía falta, reina?</div>` : ''}
-      ${k.debes > 0 ? `<div class="small" style="line-height:1.45;color:var(--lilac-d)">Aún debes ${eur(k.debes)} en cuotas${k.ultima ? `, hasta ${MESES_L[aDate(k.ultima).getMonth()]} de ${k.ultima.slice(0, 4)}` : ''}. ${k.ultima ? `Tu yo de ${MESES_L[aDate(k.ultima).getMonth()]} aún paga los caprichos de hoy.` : 'Las cuentas claras, reina.'}</div>` : ''}
+      ${sb && k.nuevas > sb.tope + 0.5 ? `<div class="small" style="line-height:1.45;font-weight:700;color:var(--berry-d)">Te has pasado ${eur(k.nuevas - sb.tope)} del sobre de Compras. ¿De verdad hacía falta, guapita?</div>` : ''}
+      ${k.debes > 0 ? `<div class="small" style="line-height:1.45;color:var(--lilac-d)">Aún debes ${eur(k.debes)} en cuotas${k.ultima ? `, hasta ${MESES_L[aDate(k.ultima).getMonth()]} de ${k.ultima.slice(0, 4)}` : ''}. ${k.ultima ? `Tu yo de ${MESES_L[aDate(k.ultima).getMonth()]} aún paga los caprichos de hoy.` : 'Las cuentas claras, cariño.'}</div>` : ''}
     </section>`;
   }
   // v0.11.0 · voz spicy: un subtítulo para cada día
-  const SALUDO = ['día de reina descansada', 'lunes de cara lavada y cartera cerrada', 'día de no liarla', 'mitad de semana, cartera entera', 'jueves: casi finde, casi tentación', 'la tarjeta quiere salir, tú decides', 'sábado de brillar con cabeza'];
+  const SALUDO = ['domingo de sofá y cartera quieta', 'lunes de cara lavada y cartera cerrada', 'día de no liarla', 'mitad de semana, cartera entera', 'jueves: casi finde, casi tentación', 'la tarjeta quiere salir, tú decides', 'sábado de brillar con cabeza'];
   R.inicio = () => {
     if (!S.movs.length) return `
       <div class="top"><div><div class="small muted">${DIAS[new Date().getDay()]} · ${SALUDO[new Date().getDay()]}</div><h1>Hola, ${esc(S.perfil.nombre)}${SPARK}</h1></div>${yo()}</div>
@@ -1423,7 +1423,7 @@
       ${c.gastoHoy > 0 ? `<div class="small" style="color:var(--t-hero);margin:-4px 0 10px">De ${eur(c.hoyInicio)} · hoy llevas ${eur(c.gastoHoy)}${c.gastoHoy > c.hoyInicio ? `: te has pasado ${eur(c.gastoHoy - c.hoyInicio)}` : ''}</div>` : ''}
       ${c.modoSaldo && c.disponible <= 0 ? '<div style="font-size:13px;line-height:1.5;color:var(--t-hero);margin-bottom:10px">Ojo: tus pagos pendientes superan tu saldo.</div>' : ''}
       <div class="hearts" role="img" aria-label="Te quedan ${n} de 10 corazones: ${eur(c.libre)} libres de ${eur(c.presupuesto)}">${corazones(n, 21, 18)}</div>
-      <div class="small" style="color:var(--t-hero2);margin-top:8px;line-height:1.45;font-weight:600">${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} al cobro y ${c.libre > 0 ? `${eur(c.libre)} para aguantarlos. Tú puedes, reina.` : 'sin dinero libre. Lo arreglamos con unos días tranquilos.'}</div>
+      <div class="small" style="color:var(--t-hero2);margin-top:8px;line-height:1.45;font-weight:600">${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} al cobro y ${c.libre > 0 ? `${eur(c.libre)} para aguantarlos. Tú puedes, cariño.` : 'sin dinero libre. Lo arreglamos con unos días tranquilos.'}</div>
       <div class="hero-acc">
         <a class="btn" href="#comprar">${IC.bag.replace('<svg', '<svg width="18" height="18"')}¿Me lo compro?${S.deseos.length ? `<span class="hero-cnt">${S.deseos.length}</span>` : ''}</a>
         <button type="button" id="bNumero" class="hero-info" aria-label="¿De dónde sale tu número?">${IC.info || ic2('M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0z', '<circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.01"/>')}</button>
@@ -1816,9 +1816,9 @@
     const vivos = todos ? L : L.filter((k) => !C.no[k.clave] && !C.tipoNo[k.tipo]);
     return vivos.sort((a, b) => b.prio - a.prio);
   }
-  // v0.9.0 · voz Bra-Píxel: avisos con «OJO, REINA 👀» y lo que sobra con «GIRL MATH 💅»
+  // v0.9.0 · voz Bra-Píxel: avisos con «OJO, CARIÑO 👀» y lo que sobra con «GIRL MATH 💅»
   function etiquetaBP(k) {
-    if (k.aviso) return 'OJO, REINA<span class="emo" aria-hidden="true">👀</span>';
+    if (k.aviso) return 'OJO, CARIÑO<span class="emo" aria-hidden="true">👀</span>';
     if (k.tipo === 'apartar') return 'GIRL MATH<span class="emo" aria-hidden="true">💅</span>';
     return k.etiqueta;
   }
@@ -2310,7 +2310,7 @@
     ${cola.length ? `<div class="dia">${cola.some((m) => m.ahorrado < m.objetivo) ? 'En cola' : 'Conseguidas'}</div><div class="grp">${cola.map((m) => {
       const hecha = m.ahorrado >= m.objetivo;
       return `<div class="mov" style="cursor:default"><span class="av" style="background:${hecha ? 'var(--mint)' : 'var(--rose)'};font-style:italic;font-size:18px">${hecha ? '✓' : pos(m)}</span>
-        <span class="t"><span class="n">${esc(m.nombre)}</span><span class="xs muted">${hecha ? '¡Conseguida, reina!' : `${eur(m.ahorrado)} de ${eur(m.objetivo)} · empieza al terminar la anterior`}</span></span></div>`;
+        <span class="t"><span class="n">${esc(m.nombre)}</span><span class="xs muted">${hecha ? '¡Conseguida, guapita!' : `${eur(m.ahorrado)} de ${eur(m.objetivo)} · empieza al terminar la anterior`}</span></span></div>`;
     }).join('')}</div>` : ''}
     <section class="card" style="display:flex;align-items:center;gap:14px">
       <span style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">Lo que sobre, para tu yo del futuro</b><span class="small muted" style="line-height:1.4">Girl math: lo que no gastas cuenta como ganado. Te aviso cuando puedas apartar.</span></span>
@@ -2327,7 +2327,7 @@
       <div class="row"><b style="font-size:15px">Rescates del ahorro</b><span class="small muted"><span class="num" style="font-size:19px;color:var(--ink)">${eur(usado)}</span> de ${eur(S.limiteRescates)}</span></div>
       ${onda(S.limiteRescates > 0 ? usado / S.limiteRescates : 0, usado > S.limiteRescates ? 'var(--peach-d)' : 'var(--berry)', 'var(--rose)', `${eur(usado)} rescatados de ${eur(S.limiteRescates)}`)}
       ${c.forzados ? `<p class="xs" style="margin:0;color:var(--berry)">Además, ${eur(c.forzados)} volvieron para tapar números rojos. No cuentan en tu límite: son la señal de que el banco aparta más de lo que tu mes aguanta.</p>` : ''}
-      <p class="xs muted" style="margin:0;line-height:1.45">${usado > S.limiteRescates ? `Este mes te has pasado ${eur(usado - S.limiteRescates)} del límite. Muy mal, reina: a partir de hoy, ni un rescate más. ` : 'Sacar no está prohibido, reina. Pero aquí todo se ve.'}</p>
+      <p class="xs muted" style="margin:0;line-height:1.45">${usado > S.limiteRescates ? `Este mes te has pasado ${eur(usado - S.limiteRescates)} del límite. Muy mal, querida: a partir de hoy, ni un rescate más. ` : 'Sacar no está prohibido, cariño. Pero aquí todo se ve.'}</p>
     </section>
     <button type="button" class="btn ghost" id="bNuevaMeta" style="border:1.5px dashed var(--rose3)">${IC.plus.replace('<svg', '<svg width="18" height="18"')}Siguiente capricho, pero con plan</button>`;
   };
