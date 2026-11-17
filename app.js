@@ -1,9 +1,9 @@
-/* Brisa · v0.9.3 — app web instalable. Todo se guarda en este móvil (localStorage). */
+/* Brisa · v0.10.0 — app web instalable. Todo se guarda en este móvil (localStorage). */
 (function () {
   'use strict';
   const B = window.BrisaCategorizador;
   const KEY = 'brisa:v1';
-  const VERSION_APP = '0.9.3';
+  const VERSION_APP = '0.10.0';
   // Ritmo de ahorro: gastar un % menos que tu gasto normal
   const RITMOS = { suave: { label: 'Suave', r: 0.05, hint: 'Para empezar sin notarlo' },
                    equilibrado: { label: 'Equilibrado', r: 0.10, hint: 'Un poco menos, sin sufrir' },
@@ -1250,6 +1250,126 @@
     const base = Math.max(1, c.sobres.length ? c.presuBase : c.presupuesto);
     return Math.max(0, Math.min(10, Math.round(c.libre / base * 10)));
   }
+  /* ---------- v0.10.0 · Tu dinero de verdad: saldo real, sobres con corazones y compras ---------- */
+  // Lo que te queda del finde y planes: cuántos sábados caen antes del cobro
+  function findesQuedan(c) { let n = 0; for (let k = 0; k < c.restantes; k++) if (aDate(masDias(hoyIso(), k)).getDay() === 6) n++; return n; }
+  const RE_PLAZOS = /klarna|scalapay|aplazame|sequra|oney|cofidis|pagantis|paypal/i;
+  const esPlazoCompra = (x) => esCuotas(x) && RE_PLAZOS.test((x.nombre || '') + ' ' + (x.busca || ''));
+  // Compras del ciclo: lo nuevo (categoría Compras) más las cuotas de Klarna, Scalapay… que caen en el ciclo
+  function comprasCiclo(c) {
+    const nuevas = c.porCat.Compras || 0;
+    const qs = c.fijosC.filter((q) => esPlazoCompra(q.fijo));
+    const cuotasPagadas = qs.reduce((a, q) => a + Math.max(0, q.importe - q.pendiente), 0);
+    const cuotasFaltan = qs.reduce((a, q) => a + q.pendiente, 0);
+    let debes = 0, ultima = null;
+    for (const x of (S.fijos || []).filter(esPlazoCompra)) for (const q of x.cuotas) if (q.fecha >= c.fin) { debes += Number(q.importe); if (!ultima || q.fecha > ultima) ultima = q.fecha; }
+    return { nuevas, cuotasPagadas, cuotasFaltan, cuotas: cuotasPagadas + cuotasFaltan, total: nuevas + cuotasPagadas + cuotasFaltan, debes: debes + cuotasFaltan, ultima };
+  }
+  // El saldo de tu cuenta partido en tres: lo que ya tiene dueño, lo de tus sobres y lo libre
+  function repartoCuenta(c) {
+    const saldo = Math.max(0, c.saldo || 0);
+    const comp = Math.min(saldo, c.pendiente + c.retenido + c.reservado + c.ahorroPend);
+    const sob = Math.min(saldo - comp, c.reservaSobres);
+    return { saldo, comp, sob, lib: Math.max(0, saldo - comp - sob) };
+  }
+  function heroCuenta(c) {
+    const r = repartoCuenta(c); const t = Math.max(1, r.saldo);
+    const pc = (x) => (x / t * 100).toFixed(1) + '%';
+    const negativo = (c.saldo || 0) < 0;
+    return `<section class="hero">
+      ${PIX.big.replace(/style="[^"]*"/, 'style="top:18px;right:20px"')}${PIX.spark.replace(/style="[^"]*"/, 'style="top:66px;right:30px"')}
+      <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">EN TU CUENTA AHORA</div>
+      <div class="big" style="margin:8px 0 4px">${negativo ? '−' : ''}${eur(Math.abs(c.saldo || 0))}</div>
+      <div class="xs" style="color:var(--t-hero);margin-bottom:12px">Saldo de BBVA del ${fmtF(c.saldoFecha)}</div>
+      ${negativo ? '<div style="font-size:13px;line-height:1.5;color:var(--t-hero);margin-bottom:10px">Estás en números rojos. Unos días tranquilos y lo arreglamos.</div>' : `
+      <div class="cta-bar" role="img" aria-label="${eur(r.comp)} de pagos que faltan, ${eur(r.sob)} en tus sobres y ${eur(r.lib)} libres">
+        <i style="width:${pc(r.comp)};background:var(--rose3)"></i><i style="width:${pc(r.sob)};background:var(--mint-b)"></i><i style="width:${pc(r.lib)};background:var(--berry)"></i></div>
+      <div class="cta-ley">
+        <a href="#fijos"><span class="dot" style="background:var(--rose3)"></span>Pagos que faltan<b>${eur(r.comp)}</b></a>
+        <a href="#presupuesto"><span class="dot" style="background:var(--mint-b)"></span>Tus sobres<b>${eur(r.sob)}</b></a>
+        <span><span class="dot" style="background:var(--berry)"></span>Libre<b>${eur(r.lib)}</b></span>
+      </div>`}
+      <div class="small" style="color:var(--t-hero2);margin-top:10px;line-height:1.45;font-weight:600">${c.restantes} ${c.restantes === 1 ? 'día' : 'días'} al cobro. ${c.hoyPuedes > 0 ? `Hoy, sin tocar tus sobres: ${eur(c.hoyPuedes)}. Tú puedes, reina.` : 'Hoy toca día tranquilo.'}</div>
+      <div class="hero-acc">
+        <a class="btn" href="#comprar">${IC.bag.replace('<svg', '<svg width="18" height="18"')}¿Me lo compro?${S.deseos.length ? `<span class="hero-cnt">${S.deseos.length}</span>` : ''}</a>
+        <button type="button" id="bNumero" class="hero-info" aria-label="¿De dónde salen tus números?">${IC.info || ic2('M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0z', '<circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.01"/>')}</button>
+      </div>
+    </section>`;
+  }
+  // Cada sobre con lo que le queda y sus 10 corazones; «Todo lo demás» con los corazones del día a día
+  function sobresInicio(c) {
+    const So = S.sobres || {}; const mv = (So.mover || {})[c.inicio] || {};
+    const comp = comprasCiclo(c);
+    const tiles = c.sobres.map((x) => {
+      const q = x.tope - x.usado; const vacio = q <= 0.5;
+      const n = x.tope > 0 ? Math.max(0, Math.min(10, Math.round(q / x.tope * 10))) : 0;
+      let pista = vacio ? (x.usado > x.tope + 0.5 ? `Te has pasado ${eur(x.usado - x.tope)}` : 'Vacío hasta el cobro')
+        : x.id === 'ocio' ? (() => { const f = findesQuedan(c); return f ? `${f} ${f === 1 ? 'finde' : 'findes'} por delante` : `≈ ${eur(q / c.restantes)}/día`; })()
+        : `≈ ${eur(q / c.restantes)}/día`;
+      if (x.id === 'compras' && comp.cuotas > 0) pista = `+ ${eur(comp.cuotas)} de cuotas`;
+      const dado = -(mv[x.id] || 0);
+      return `<button type="button" class="sb sbh${vacio ? ' vacio' : ''}" data-sobre="${x.id}">
+        <span class="sb-n"><span class="dot" style="background:${colorSobre(x)};border:1px solid var(--line2)"></span>${x.nombre}</span>
+        <span style="display:flex;align-items:baseline;gap:4px"><span class="num" style="font-size:22px">${vacio ? 'Vacío' : eur(q)}</span>${vacio ? '' : '<span class="xs muted">quedan</span>'}</span>
+        <span class="hearts sm" role="img" aria-label="${n} de 10 corazones">${corazones(n, 11, 10)}</span>
+        <span class="xs muted">${pista}${dado > 0 ? ` · −${eur(dado)} a otros sobres` : ''}</span></button>`;
+    });
+    const nL = corazonesN(c);
+    const justo = nL <= 3;
+    const extra = c.modoSaldo ? repartoCuenta(c).lib - c.libre : 0;
+    return `<div class="pix" style="font-size:12px;letter-spacing:.8px;color:var(--berry-d);margin:4px 6px 8px">LO QUE LE QUEDA A CADA SOBRE</div>
+    <div class="sb-g">${tiles.join('')}</div>
+    <a class="card" href="#presupuesto" style="background:${justo ? 'var(--butter)' : 'var(--rose)'};border:0;display:flex;flex-direction:column;gap:6px;text-decoration:none;color:var(--ink)">
+      <span class="row"><b style="font-size:15px">Todo lo demás</b><span class="num" style="font-size:20px;white-space:nowrap">${eur(c.libre)}</span></span>
+      <span class="hearts" role="img" aria-label="Te quedan ${nL} de 10 corazones: ${eur(c.libre)} libres de ${eur(c.presuBase)}">${corazones(nL, 17, 15)}</span>
+      <span class="small" style="color:${justo ? 'var(--butter-d)' : 'var(--t-hero)'};line-height:1.45">${justo ? '<b>OJO, REINA 👀</b> · ' : ''}Súper, estanco y lo que no tiene sobre. Hoy: ${eur(c.hoyPuedes)}.${extra > 5 ? ` Los otros ${eur(extra)} libres de tu cuenta son para apartar o para el mes que viene.` : ''}</span>
+    </a>`;
+  }
+  // Si un sobre se pasa: aviso y propuesta de sacarlo de Ocio y planes (lo que debe notar el derroche)
+  const DONANTE = 'ocio';
+  function avisosSobres(c) {
+    const So = S.sobres || {}; const vistos = ((So.vistos || {})[c.inicio]) || {};
+    const don = c.sobres.find((x) => x.id === DONANTE);
+    return c.sobres.filter((x) => x.usado - x.tope > 0.5).map((x) => {
+      const ex = Math.ceil(x.usado - x.tope);
+      if (vistos[x.id] >= ex) return '';
+      const hay = don && don.id !== x.id ? Math.floor(Math.max(0, don.tope - don.usado)) : 0;
+      const tapa = Math.min(ex, hay);
+      const txt = tapa > 0
+        ? `${x.nombre} se ha pasado ${eur(ex)}. ¿${tapa < ex ? `Sacamos ${eur(tapa)}` : 'Lo sacamos'} de ${don.nombre}?${tapa < ex ? ` El resto, ${eur(ex - tapa)}, sale de Todo lo demás.` : ''}`
+        : `${x.nombre} se ha pasado ${eur(ex)}. ${x.id === DONANTE ? 'Sale' : `${don ? don.nombre : 'Ocio y planes'} ya está a cero, así que sale`} de Todo lo demás.`;
+      return `<section class="card" style="background:var(--peach);border:0;display:flex;flex-direction:column;gap:10px">
+        <div class="pix" style="font-size:12px;letter-spacing:.8px;color:var(--peach-d)">OJO, REINA 👀</div>
+        <div style="font-size:15px;line-height:1.45;color:var(--t-peach)">${txt}</div>
+        <div class="btn-row" style="display:flex;gap:8px">${tapa > 0
+          ? `<button type="button" class="btn" data-tapar="${x.id}" data-de="${DONANTE}" data-imp="${tapa}" style="flex:1">Sí, de ${don.nombre.split(' ')[0]}</button><button type="button" class="btn ghost" data-sobre="${x.id}" style="flex:1">Elijo yo</button>`
+          : `<button type="button" class="btn ghost" data-sbvisto="${x.id}" data-imp="${ex}" style="flex:1">Vale</button>${c.sobres.some((o) => o.id !== x.id && o.tope - o.usado >= 1) ? `<button type="button" class="btn ghost" data-sobre="${x.id}" style="flex:1">Elijo yo</button>` : ''}`}</div>
+      </section>`;
+    }).join('');
+  }
+  function taparSobre(id, de, imp) {
+    const c = ciclo(); const So = S.sobres; So.mover = So.mover || {};
+    const m = So.mover[c.inicio] = So.mover[c.inicio] || {};
+    m[id] = (m[id] || 0) + imp; m[de] = (m[de] || 0) - imp;
+    guardar(); render();
+    const d = SOBRES.find((k) => k.id === de);
+    toast(de === DONANTE ? `${d.nombre} invita esta vez 💅` : `${eur(imp)} pasados desde ${d.nombre}`);
+  }
+  // Compras del ciclo, con las cuotas de Klarna y Scalapay: las cuentas claras
+  function tarjetaCompras(c) {
+    const k = comprasCiclo(c);
+    if (k.total <= 0 && k.debes <= 0) return '';
+    const sb = c.sobres.find((x) => x.id === 'compras');
+    return `<section class="card" style="background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;border-radius:20px;background:var(--lilac);color:var(--lilac-d);display:flex;align-items:center;justify-content:center;flex-shrink:0">${IC.bag.replace('<svg', '<svg width="20" height="20"')}</span>
+        <div><div class="pix" style="font-size:12px;letter-spacing:.8px;color:var(--lilac-d)">COMPRAS ESTE CICLO</div><div class="num" style="font-size:25px">${eur(k.total)}</div></div></div>
+      <div class="lg">
+        <div class="lg-r"><span>Compras nuevas</span><b>${eur(k.nuevas)}${sb ? `<span class="xs muted" style="font-weight:600"> de ${eur(sb.tope)}</span>` : ''}</b></div>
+        <div class="lg-r"><span>Cuotas de Klarna, Scalapay…${k.cuotasFaltan > 0 ? `<span class="xs muted"> (${eur(k.cuotasFaltan)} aún por cobrar)</span>` : ''}</span><b>${eur(k.cuotas)}</b></div>
+      </div>
+      ${k.debes > 0 ? `<div class="small" style="line-height:1.45;color:var(--lilac-d)">Aún debes ${eur(k.debes)} en cuotas${k.ultima ? `, hasta ${MESES_L[aDate(k.ultima).getMonth()]} de ${k.ultima.slice(0, 4)}` : ''}. Las cuentas claras, reina.</div>` : ''}
+    </section>`;
+  }
   R.inicio = () => {
     if (!S.movs.length) return `
       <div class="top"><div><div class="small muted">${DIAS[new Date().getDay()]} · día de no liarla</div><h1>Hola, ${esc(S.perfil.nombre)}${SPARK}</h1></div>${yo()}</div>
@@ -1262,6 +1382,7 @@
     const finTxt = fmtF(c.fin);
     const n = corazonesN(c);
     const hoy = hoyIso();
+    const conCuenta = c.modoSaldo && c.sobres.length > 0;
     const pronto = c.fijosC.filter((q) => q.pendiente > 0 && q.fecha >= hoy && dias(hoy, q.fecha) <= 3);
     const sug = sugerirFijos();
     const plz = plazosNuevos();
@@ -1288,7 +1409,7 @@
       <div><div class="small muted">${DIAS[new Date().getDay()]} · día de no liarla</div><h1>Hola, ${esc(S.perfil.nombre)}${SPARK}</h1></div>
       ${yo()}
     </div>
-    <section class="hero">
+    ${conCuenta ? heroCuenta(c) : `<section class="hero">
       ${PIX.big.replace(/style="[^"]*"/, 'style="top:18px;right:20px"')}${PIX.spark.replace(/style="[^"]*"/, 'style="top:66px;right:30px"')}
       <div class="pix" style="font-size:14px;color:var(--berry-d);letter-spacing:.5px">HOY TE PUEDES PERMITIR</div>
       <div class="big" style="margin:8px 0 10px">${eur(c.hoyPuedes)}</div>
@@ -1300,9 +1421,11 @@
         <a class="btn" href="#comprar">${IC.bag.replace('<svg', '<svg width="18" height="18"')}¿Me lo compro?${S.deseos.length ? `<span class="hero-cnt">${S.deseos.length}</span>` : ''}</a>
         <button type="button" id="bNumero" class="hero-info" aria-label="¿De dónde sale tu número?">${IC.info || ic2('M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0z', '<circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.01"/>')}</button>
       </div>
-    </section>
+    </section>`}
+    ${conCuenta ? avisosSobres(c) + sobresInicio(c) : ''}
     <div class="tiles">${fichas.slice(0, 2).join('')}</div>
     ${rescEnFicha ? '' : tarjetaRescates(false)}
+    ${tarjetaCompras(c)}
     ${tarjetaConsejo()}
     ${tarjetaCiclo(c)}
     ${tarjetaAparta(c)}
@@ -1441,11 +1564,15 @@
       ${act ? `<p class="small" style="margin:6px 0 0;color:var(--t-hero)">Este ciclo: llevas ${eur(act.usado)} de ${eur(act.tope)}.</p>` : ''}
       <div class="small" style="font-weight:800;margin:16px 0 6px">Cada mes</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><button type="button" class="icon-btn" id="sbMenos" aria-label="5 € menos al mes" style="font-size:22px;font-weight:700">−</button><span class="num" style="font-size:28px">${eur(Number(item.importe))}</span><button type="button" class="icon-btn" id="sbMas" aria-label="5 € más al mes" style="font-size:22px;font-weight:700">+</button></div>
+      ${act && act.usado - act.tope > 0.5 ? (() => { const ex = Math.ceil(act.usado - act.tope); const ds = c.sobres.filter((x) => x.id !== id && x.tope - x.usado >= 1).sort((a, b) => (b.id === DONANTE) - (a.id === DONANTE));
+        return `<div class="small" style="font-weight:800;margin:18px 0 6px">Te has pasado ${eur(ex)}. ¿De dónde lo sacamos?</div>${ds.map((x) => { const t = Math.min(ex, Math.floor(x.tope - x.usado)); return `<button type="button" class="btn${x.id === DONANTE ? '' : ' ghost'}" data-tapa="${x.id}" data-imp="${t}" style="margin-top:8px">${t} € desde ${x.nombre}</button>`; }).join('')}<p class="xs muted" style="margin:8px 2px 0">Lo que no tapes sale de Todo lo demás.</p>`; })() : ''}
       ${act ? `<div class="small" style="font-weight:800;margin:18px 0 6px">¿Se te queda corto este ciclo?</div>
       ${otros.length ? otros.map((x) => `<button type="button" class="btn ghost" data-mover="${x.id}" style="margin-top:8px">Pasar 10 € desde ${x.nombre}</button>`).join('') : '<p class="small muted" style="margin:0">Tus otros sobres no tienen de dónde pasar.</p>'}` : ''}`;
     $sheet.onclick = (e) => {
       if (e.target.closest('#sCerrar') || e.target === $sheet) { $sheet.close(); return; }
       if (e.target.closest('#sbMenos') || e.target.closest('#sbMas')) { item.importe = Math.max(0, Number(item.importe) + (e.target.closest('#sbMas') ? 5 : -5)); guardar(); render(); abrirSobre(id); return; }
+      const tp = e.target.closest('[data-tapa]');
+      if (tp) { $sheet.close(); taparSobre(id, tp.dataset.tapa, Number(tp.dataset.imp)); return; }
       const mv = e.target.closest('[data-mover]');
       if (mv) { So.mover = So.mover || {}; const m = So.mover[c.inicio] = So.mover[c.inicio] || {}; m[id] = (m[id] || 0) + 10; m[mv.dataset.mover] = (m[mv.dataset.mover] || 0) - 10; guardar(); render(); abrirSobre(id); toast('10 € pasados a ' + b.nombre); }
     };
@@ -1503,6 +1630,8 @@
     const q = (x) => $app.querySelector(x);
     if (q('#bNumero')) q('#bNumero').onclick = abrirNumero;
     $app.querySelectorAll('[data-sobre]').forEach((b) => b.onclick = () => abrirSobre(b.dataset.sobre));
+    $app.querySelectorAll('[data-tapar]').forEach((b) => b.onclick = () => taparSobre(b.dataset.tapar, b.dataset.de, Number(b.dataset.imp)));
+    $app.querySelectorAll('[data-sbvisto]').forEach((b) => b.onclick = () => { const c = ciclo(); const So = S.sobres; So.vistos = So.vistos || {}; const v = So.vistos[c.inicio] = So.vistos[c.inicio] || {}; v[b.dataset.sbvisto] = Number(b.dataset.imp); guardar(); render(); });
     if (q('#sbEmpezar')) q('#sbEmpezar').onclick = () => { const c = ciclo(); S.sobres = { desde: dias(c.inicio, hoyIso()) <= 3 ? c.inicio : c.fin, lista: SOBRES.map((x) => ({ id: x.id, importe: x.importe })), mover: {} }; guardar(); render(); toast('¡Sobres listos!'); };
     if (q('#rpMenos')) q('#rpMenos').onclick = () => { repAhorro -= 5; render(); };
     if (q('#rpMas')) q('#rpMas').onclick = () => { repAhorro += 5; render(); };
